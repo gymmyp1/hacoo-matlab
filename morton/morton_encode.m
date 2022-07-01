@@ -1,4 +1,4 @@
-function result = encode(vals)
+function result = morton_encode(vals)
     %{
     Compute the morton encoding for the data passed into the function.
 

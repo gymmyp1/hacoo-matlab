@@ -1,4 +1,4 @@
-function l = decode(m, n)
+function l = morton_decode(m, n)
     %{
     Extract integers from a morton encoding.
     Parameters:

@@ -18,10 +18,10 @@ v = 1;
 
 t = hacoo(modes);
 
-t.search(512)
+m = morton_encode(i);
 
-t.table{1}.morton = 512
-t.search(512)
+t.set(i,v)
+
 
 %t.table{1}
 %t.table(1,1) = 273489;

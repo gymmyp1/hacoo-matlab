@@ -32,7 +32,7 @@ classdef hacoo
 
             t.table = cell(t.nbuckets,1); %<-- create the cell table of structs
             for i = 1:t.nbuckets
-                t.table{i} = struct('morton',NaN,'value',NaN,'next',NaN);
+                t.table{i} = struct('morton',-1,'value',-1,'next',-1);
             end
 
             t.bits = ceil(log2(t.nbuckets));
@@ -58,7 +58,7 @@ classdef hacoo
 
         %Function to insert an element in the hash table. Return the hash item if found, 0 if not found.
         function t = set(self,i, v)
-            addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/hacoo/
+            addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/morton/
 
             % build the modes if we need
             if self.modes == 0
@@ -74,25 +74,27 @@ classdef hacoo
             end
 
             % find the index
-            morton = encode(i);
+            morton = morton_encode(i);
             [k, i] = self.search(morton);
 
             % insert accordingly
             if i == -1 %<-- bucket is unoccupied, go ahead and insert
+                fprintf("bucket is unoccupied, go ahead and insert\n");
                 if v ~= 0
                     self.table{k}.morton = morton;
                     self.table{k}.value = v;
-                    self.table{k}.next = struct('morton',NaN,'value',NaN,'next',NaN);
+                    self.table{k}.next = struct('morton',-1,'value',-1,'next',-1);
                     self.hash_curr_size = self.hash_curr_size + 1;
                     %depth = length(self.table(k));
                     %if depth > self.max_chain_depth
                     %    self.max_chain_depth = depth;
                     %end
+                    fprintf("index set\n");
                 end
             else %<-- entry goes in an existing list
                 if v ~=0
                     curr_item = self.table{k};
-                    while isnan(curr_item.morton) ~= 0 %<-- iterate to the end of the chain
+                    while curr_item.morton ~= -1 %<-- iterate to the end of the chain
                         curr_item = self.table{k}.next; %<-- increment thru the chain
                     end
                     curr_item.next.morton = morton; %<-- insert new item at end of chain
@@ -101,15 +103,16 @@ classdef hacoo
                     %self.remove(k,i); %not implemented yet
                 end
             end
-        end
-        %{
+
+            %{
     		% Check if we need to rehash
     		if((self.hash_curr_size/self.nbuckets) > self.load_factor)
     			self.rehash();
             end
-        %}
+            %}
+        end
 
-        function [k,i] = search(self, m)
+        function [k,i] = search(self, m) %<-- does this need to return the item itself?
             %{
 		Search for a morton coded entry in the index hash.
 		Parameters:
@@ -120,19 +123,30 @@ classdef hacoo
 			if m is not found, it returns (k, -1).
             %}
             k = self.hash(m);
-            if isnan(self.table{k}.morton) ~= 0 %<-- check if that whole slot is not empty
+            if self.table{k}.morton ~= -1 %<-- check if that whole slot is not empty
                 i = 1;
                 item = self.table{k};
-                item
-                while isnan(item.next) ~= 0 %<-- check if there's a next element in chain
+                while item.next ~= -1 %<-- check if there's a next element in chain
                     if item.morton == m
                         return
                     end
                     item = item.next; %<-- increment thru the chain
                     i = i+1;
                 end
-                i = -1; %<-- item was not found
-                return;
+            end
+            i = -1; %<-- item was not found
+            return;
+        end
+
+        function item = get(self, i) %<-- working here
+            morton = mort.encode(*i);
+            k, i = self.search(morton);
+
+
+    		if i ~= -1 %<-- return the item if it is present
+    			return
+            else
+    			return 0.0
             end
         end
 
