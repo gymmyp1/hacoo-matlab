@@ -12,16 +12,19 @@ end
 fclose(fid);
 %}
 
-modes = [1,5,10];
-i = [2,1,1];
+modes = [5,5,5];
+i = [1,5,10]; % morton code should be 2211
 v = 1;
 
 t = hacoo(modes);
-
+length(t.table)
 m = morton_encode(i);
 
-t.set(i,v)
+t = t.set(i,v); %maybe i have to set t = to the new table each time?
 
+g = t.get(i)
+
+%t.get(i)
 
 %t.table{1}
 %t.table(1,1) = 273489;

@@ -28,24 +28,7 @@ classdef hacoo
             t.load_factor = 0.6;
 
             % Initialize all hash table related things
-            t.nbuckets = NBUCKETS;
-
-            t.table = cell(t.nbuckets,1); %<-- create the cell table of structs
-            for i = 1:t.nbuckets
-                t.table{i} = struct('morton',-1,'value',-1,'next',-1);
-            end
-
-            t.bits = ceil(log2(t.nbuckets));
-            t.sx = ceil(t.bits/8)-1;
-            t.sy = 4 * t.sx-1;
-            if t.sy < 1
-                t.sy = 1;
-            end
-            t.sz = ceil(t.bits/2);
-            t.mask = t.nbuckets-1;
-            t.num_collisions = 0;
-            t.max_chain_depth = 0;
-            t.probe_time = 0;
+            t = hash_init(t,NBUCKETS);
 
             if (nargin == 1)
                 t.modes = varargin{1};
@@ -54,6 +37,29 @@ classdef hacoo
                 t.modes = 0;   %<-- EMPTY class constructor,no modes specified
                 t.nmodes = 0;
             end
+        end
+
+        % Initialize all hash table related things
+        function self = hash_init(self, nbuckets)
+            self.nbuckets = nbuckets;
+
+            self.table = cell(self.nbuckets,1); %<-- create the cell table of structs
+            for i = 1:self.nbuckets
+               self.table{i} = struct('morton',-1,'value',-1,'next',-1,'last',-1,'depth', 0);
+               self.table{i}.last = self.table{i}; %<-- set last to be the only item
+            end
+
+            self.bits = ceil(log2(self.nbuckets));
+            self.sx = ceil(self.bits/8)-1;
+            self.sy = 4 * self.sx-1;
+            if self.sy < 1
+                self.sy = 1;
+            end
+            self.sz = ceil(self.bits/2);
+            self.mask = self.nbuckets-1;
+            self.num_collisions = 0;
+            self.max_chain_depth = 0;
+            self.probe_time = 0;
         end
 
         %Function to insert an element in the hash table. Return the hash item if found, 0 if not found.
@@ -75,33 +81,36 @@ classdef hacoo
 
             % find the index
             morton = morton_encode(i);
-            [k, i] = self.search(morton);
+            [item, k] = self.search(morton); %search retrieves the item if found, -1 if not found
 
             % insert accordingly
-            if i == -1 %<-- bucket is unoccupied, go ahead and insert
-                fprintf("bucket is unoccupied, go ahead and insert\n");
+            if item == -1 %<-- bucket is unoccupied, go ahead and insert
+                %fprintf("bucket is unoccupied, go ahead and insert\n");
                 if v ~= 0
                     self.table{k}.morton = morton;
                     self.table{k}.value = v;
-                    self.table{k}.next = struct('morton',-1,'value',-1,'next',-1);
+                    self.table{k}.next = struct('morton',-1,'value',-1,'next',-1);%<-- insert dummy item at end of chain
+                    self.table{k}.depth = self.table{k}.depth + 1;
                     self.hash_curr_size = self.hash_curr_size + 1;
-                    %depth = length(self.table(k));
-                    %if depth > self.max_chain_depth
-                    %    self.max_chain_depth = depth;
-                    %end
-                    fprintf("index set\n");
+
+                    if self.table{k}.depth > self.max_chain_depth
+                        self.max_chain_depth = self.table{k}.depth;
+                    end
+                    %fprintf("index set\n");
                 end
             else %<-- entry goes in an existing list
                 if v ~=0
-                    curr_item = self.table{k};
-                    while curr_item.morton ~= -1 %<-- iterate to the end of the chain
-                        curr_item = self.table{k}.next; %<-- increment thru the chain
-                    end
-                    curr_item.next.morton = morton; %<-- insert new item at end of chain
-                    curr_item.next.value = v;
+                    new_item = self.table{k}.last.next;
+                    new_item.morton = morton; %<-- update the dummy item at the end
+                    new_item.value = v;
+                    new_item.next = struct('morton',-1,'value',-1,'next',-1);%<-- new dummy item at end of chain
+                    self.table{k}.depth = self.table{k}.depth + 1;
+                    self.hash_curr_size = self.hash_curr_size + 1;
+                    self.table{k}.last = new_item; %<-- update the last item
                 else
                     %self.remove(k,i); %not implemented yet
                 end
+                
             end
 
             %{
@@ -110,43 +119,45 @@ classdef hacoo
     			self.rehash();
             end
             %}
+            t = self;
         end
 
-        function [k,i] = search(self, m) %<-- does this need to return the item itself?
+        function [result,k] = search(self, m)
             %{
 		Search for a morton coded entry in the index hash.
 		Parameters:
 			m - The morton entry
 		Returns:
-			If m is found, it returns the (k, i) tuple where k is
-			  the bucket and i is the index in the chain
-			if m is not found, it returns (k, -1).
+            result - the item if found, -1 if not found 
+            k - bucket it occupies or should occupy.
             %}
             k = self.hash(m);
-            if self.table{k}.morton ~= -1 %<-- check if that whole slot is not empty
-                i = 1;
-                item = self.table{k};
-                while item.next ~= -1 %<-- check if there's a next element in chain
-                    if item.morton == m
-                        return
-                    end
-                    item = item.next; %<-- increment thru the chain
-                    i = i+1;
+            curr_item = self.table{k};
+            while curr_item.morton ~= -1 %<-- check if there's a next element in chain
+                if curr_item.morton == m
+                    result = curr_item;
+                    return
                 end
+                curr_item = curr_item.next; %<-- increment thru the chain
+                k = k+1;
             end
-            i = -1; %<-- item was not found
+            result = -1; %<-- item was not found
             return;
         end
 
         function item = get(self, i) %<-- working here
-            morton = mort.encode(*i);
-            k, i = self.search(morton);
+            addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/morton/
 
+            morton = morton_encode(i);
+            [item, k] = self.search(morton);
 
-    		if i ~= -1 %<-- return the item if it is present
-    			return
+            if item.morton ~= -1 %<-- return the item if it is present
+                %fprintf("item found");
+                return
             else
-    			return 0.0
+                %fprintf("item not found");
+                item = 0.0;
+                return
             end
         end
 
@@ -166,6 +177,26 @@ classdef hacoo
             hash = bitxor(hash, bitshift(hash,-t.sy)); %bit shift to the right
             hash = hash + (bitshift(hash,t.sz)); %bit shift to the left
             k = mod(hash,t.nbuckets);
+        end
+
+        function t = rehash(self)
+            old = self.table;
+
+            t = self.hash_init(self, self.nbuckets*2); %<-- double the number of buckets
+
+            for i = 1:length(old)
+                if old{i}.morton = -1
+                    continue
+                while old{i}.morton ~= -1
+                    k = self.hash(t, old{i}.morton); %<-- return new key for this item
+                    self.table{k} = old{i}; %??? flag to check if it's the first item in chain or not?
+                end
+            end
+
+        end
+
+        function t = clear(self)
+            t = self.hash_init(self, self.nbuckets);
         end
     end
 end
