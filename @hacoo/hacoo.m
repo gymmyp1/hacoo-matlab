@@ -68,7 +68,7 @@ classdef hacoo
 
             % build the modes if we need
             if self.modes == 0
-                self.modes = zeroes(length(i));
+                self.modes = zeros(length(i));
                 self.nmodes = length(i);
             end
 
@@ -96,7 +96,7 @@ classdef hacoo
                     if self.table{k}.depth > self.max_chain_depth
                         self.max_chain_depth = self.table{k}.depth;
                     end
-                    %fprintf("index set\n");
+                    fprintf("index set\n");
                 end
             else %<-- entry goes in an existing list
                 if v ~=0
@@ -184,19 +184,55 @@ classdef hacoo
 
             t = self.hash_init(self, self.nbuckets*2); %<-- double the number of buckets
 
-            for i = 1:length(old)
-                if old{i}.morton = -1
+            for i = 1:length(old) %<-- loop over every bucket in old table
+                if old{i}.morton == -1
                     continue
-                while old{i}.morton ~= -1
+                end
+                %this may need to be refactored...
+                while old{i}.morton ~= -1 %<-- loop over every item in the chain
                     k = self.hash(t, old{i}.morton); %<-- return new key for this item
-                    self.table{k} = old{i}; %??? flag to check if it's the first item in chain or not?
+                    if self.table{k}.morton == -1 %<-- If slot is unoccupied, go ahead and insert.
+                        self.table{k}.morton = morton;
+                        self.table{k}.value = v;
+                        self.table{k}.next = struct('morton',-1,'value',-1,'next',-1);%<-- insert dummy item at end of chain
+                        self.table{k}.depth = self.table{k}.depth + 1;
+                        self.hash_curr_size = self.hash_curr_size + 1;
+
+                        if self.table{k}.depth > self.max_chain_depth
+                            self.max_chain_depth = self.table{k}.depth;
+                        end
+                    else
+                        new_item = self.table{k}.last.next;
+                        new_item.morton = morton; %<-- update the dummy item at the end
+                        new_item.value = v;
+                        new_item.next = struct('morton',-1,'value',-1,'next',-1);%<-- new dummy item at end of chain
+                        self.table{k}.depth = self.table{k}.depth + 1;
+                        self.hash_curr_size = self.hash_curr_size + 1;
+                        self.table{k}.last = new_item; %<-- update the last item
+                    end
                 end
             end
 
         end
-
-        function t = clear(self)
-            t = self.hash_init(self, self.nbuckets);
+        
+        %Function to print the tensor
+        function display_tns(self)
+            for i = 1:self.nbuckets
+                curr_item = self.table{i};
+                if curr_item.morton == -1
+                    %fprintf("empty bucket, skipping\n");
+                    continue
+                else
+                    fprintf("occupied bucket, printing\n");
+                    curr_item
+                    while curr_item.next ~= -1
+                        curr_item = curr_item.next;
+                        curr_item
+                    end
+                end
+            end
         end
+
+        %end of methods
     end
 end
