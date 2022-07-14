@@ -3,9 +3,9 @@
 addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 t = read('test.txt');
+%t.get([3, 5, 5])
 
-
-t.display_tns()
+t.display_tns();
 
 function t = read(file)
     T = readtable(file);
@@ -18,7 +18,7 @@ function t = read(file)
         length = width(row);
         val = row.(length);
         idx = table2array(removevars(row,length)); %remove the value so the rest is the index
-    
-        t.set(idx,val);
+        
+        t = t.set(idx,val);
     end
 end

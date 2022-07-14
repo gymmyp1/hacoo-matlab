@@ -12,4 +12,4 @@ m = morton_encode(i);
 
 t = t.set(i,v); %maybe i have to set t = to the new table each time?
 
-%g = t.get(i)
+g = t.get(i)
