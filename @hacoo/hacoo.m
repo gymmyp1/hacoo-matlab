@@ -89,30 +89,33 @@ classdef hacoo
             morton = morton_encode(i);
             [item, k] = t.search(morton); %search retrieves the item if found, or returns the struct where it should be if not found
 
+            %need to deal with duplicate indices case...
+
             % insert accordingly
             if item.flag ~= -1
                 %skip to the proper depth
                 t.table{k}.last.next.morton = morton;
                 t.table{k}.last.next.value = v;
                 t.table{k}.last.next.flag = 1;
-                t.table{k}.last.next = struct('morton',-1,'value',-1,'next',-1,'flag', -1');%<-- new dummy item at end of chain
+                t.table{k}.last.next.next = struct('morton',-1,'value',-1,'next',-1,'flag', -1');%<-- new dummy item at end of chain
                 %update the last item
                 t.table{k}.last = t.table{k}.last.next;
                 t.table{k}.depth = t.table{k}.depth + 1;
 
                 if t.table{k}.depth > t.max_chain_depth
-
                     t.max_chain_depth = t.table{k}.depth;
                 end
             else
+                %this is an unoccupied bucket
                 t.table{k}.morton = morton;
                 t.table{k}.value = v;
                 t.table{k}.flag = 1;
+                t.table{k}.depth = t.table{k}.depth + 1;
                 t.table{k}.next = struct('morton',-1,'value',-1,'next',-1,'flag', -1');%<-- new dummy item at end of chain
             end
 
             t.hash_curr_size = t.hash_curr_size + 1;
-            fprintf("index set\n");
+            %fprintf("index set\n");
             
 
             %{
@@ -161,7 +164,7 @@ classdef hacoo
             item = t.search(morton);
 
             if item.flag == 1
-                fprintf("item found");
+                %fprintf("item found");
                 return
             else
                 fprintf("item not found");
@@ -196,6 +199,8 @@ classdef hacoo
             for i = 1:old.nbuckets %<-- loop over every bucket in old table
                 if old{i}.flag == -1
                     continue
+                else
+                    %while no last item in chain 
                 end
 
             end
@@ -204,14 +209,12 @@ classdef hacoo
 
         %Function to print the tensor
         function display_tns(t)
-            fprintf("printing tensor\n");
+            fprintf("Printing tensor...\n");
             for i = 1:t.nbuckets
-                if t.table{i}.flag == 1
-                    t.table{i}
-                    %while curr_item.next ~= -1
-                    %    curr_item
-                    %    curr_item = curr_item.next;
-                    %end
+                item = t.table{i};
+                while item.flag ~= -1
+                    disp(item);
+                    item = item.next;
                 end
             end
         end
