@@ -5,7 +5,8 @@
 classdef hacoo
     properties
         table   %<-- hash table
-        nbuckets  %<--number of slots in hash table
+        depths  %<-- corresponding table depths
+        nbuckets  %<-- number of slots in hash table
         modes   %<-- modes list
         nmodes %<-- number of modes
         bits
@@ -43,11 +44,10 @@ classdef hacoo
         function t = hash_init(t, nbuckets)
             t.nbuckets = nbuckets;
 
-            t.table = cell(t.nbuckets,1); %<-- create the cell table of structs
-            for i = 1:t.nbuckets
-               t.table{i} = struct('morton',-1,'value',-1,'next',-1,'last',-1,'flag',-1,'depth', 0);
-               t.table{i}.next = struct('morton',-1,'value',-1,'next',-1,'flag', -1');%<-- new dummy item at end of chain;
-               t.table{i}.last = t.table{i}; %<-- set last to be the only item
+            t.table = cell(t.nbuckets,1); %<-- create appropriate number of bucket slots
+
+            for i = 1:t.nbuckets %<-- create a blank list that will be populated w/ nodes in each table cell
+               t.table{i} = cell(1);
             end
 
             t.bits = ceil(log2(t.nbuckets));
@@ -89,8 +89,7 @@ classdef hacoo
             morton = morton_encode(i);
             [item, k] = t.search(morton); %search retrieves the item if found, or returns the struct where it should be if not found
 
-            %need to deal with duplicate indices case...
-
+            
             % insert accordingly
             if item.flag ~= -1
                 %skip to the proper depth
@@ -139,8 +138,8 @@ classdef hacoo
             k - bucket it occupies or should occupy.
             %}
             k = t.hash(m);
-            result = t.table{k};
-            while result.flag ~= -1 %<-- check if there's a next element in chain
+
+            for i = 1:length(t.table{k})
                 if result.morton == m
                     return
                 end
