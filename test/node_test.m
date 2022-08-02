@@ -9,6 +9,12 @@ for i = 1:nbuckets
     table{i} = cell(1);
 end
 
+if isempty(table{1})
+    fprintf("empty cell\n")
+else
+    fprintf("not empty\n")
+end
+
 table{1}{1} = node();
 table{1}{2} = node(512,2);
 table{1}{3} = node(5,5);

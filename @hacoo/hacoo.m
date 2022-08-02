@@ -46,11 +46,11 @@ classdef hacoo
             % create column vector w/ appropriate number of bucket slots
             t.table = cell(t.nbuckets,1);
 
-            % create a blank list in each table cell that's populated w/ empty nodes
-            for i = 1:t.nbuckets
-               t.table{i} = cell(1);
-               t.table{i}{1} = node();
-            end
+            % create a blank cell array in each table slot. entries are of
+            % "node" type
+            %for i = 1:t.nbuckets
+            %   t.table{i} = cell(1);
+            %end
 
             % Set hashing parameters
             t.bits = ceil(log2(t.nbuckets));
@@ -85,7 +85,8 @@ classdef hacoo
             end
 
             % find the index
-    		morton = morton_encode(i);
+    		%morton = morton_encode(i);
+            morton = str2double(sprintf('%d', i));
     		[k, i] = t.search(morton);
 
     		% insert accordingly
@@ -110,7 +111,7 @@ classdef hacoo
             
     		% Check if we need to rehash
     		if((t.hash_curr_size/t.nbuckets) > t.load_factor)
-    			t.rehash();
+    			t = t.rehash();
             end
             
         end
@@ -127,14 +128,26 @@ classdef hacoo
 			if m is not found, it returns (k, -1).
             %}
             k = t.hash(m);
+            
+            %this is temporary...
+            if k <= 0
+                k = 1;
+            end
 
+            %check if there are no entries in that bucket
+            if isempty(t.table{k})
+                i = -1;
+                return
+            end
+
+            %attempt to find item in that slot's chain
             for i = 1:length(t.table{k})
                 if t.table{k}{i}.morton == m
                     return
                 end
             end
             i = -1;
-            return;
+            return
         end
 
         function item = get(t, i)
@@ -148,7 +161,8 @@ classdef hacoo
         %}
             addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/morton/
 
-            morton = morton_encode(i);
+            %morton = morton_encode(i);
+            morton = str2double(sprintf('%d', i));
             [k,j] = t.search(morton);
 
             if j ~= -1
@@ -184,22 +198,28 @@ classdef hacoo
             fprintf("Rehashing...\n");
             old = t.table;
 
-            t = t.hash_init(t, t.nbuckets*2); %<-- double the number of buckets
-
+            t = t.hash_init(t.nbuckets*2); %<-- double the number of buckets
+            t.nbuckets
             % reinsert everything into the hash index
-    		for i = 1:old.nbuckets
-    			if old{i}{1}.morton == -1
+    		for i = 1:length(old)
+    			if isempty(old{i})
     				continue
                 end
-    			for item = 1:length(old{i})
-    				k = t.hash(item.morton);
-    				t.table{k}{end} = item;
+    			for j = 1:length(old{i})
+    				k = t.hash(old{i}{j}.morton);
+                    
+                    if k <= 0
+                        k = 1;
+                    end
+                    
+    				t.table{k}{end+1} = old{i}{j};
     				depth = length(t.table{k});
-    				if depth > self.max_chain_depth
+    				if depth > t.max_chain_depth
     					t.max_chain_depth = depth;
                     end
                 end
             end
+            fprintf("done rehashing\n");
         end
 
         function t = remove_node(t,k,i)
@@ -218,6 +238,11 @@ classdef hacoo
                     end
                 end
             end
+        end
+
+        % Clear all entries and start w/ a new tensor.
+        function t = clear(t, nbuckets)
+            t = t.hash_init(t,nbuckets);
         end
 
         %end of methods

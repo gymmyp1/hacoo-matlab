@@ -2,10 +2,12 @@
 
 addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
-t = read('test.txt');
-t.get([3, 5, 5])
+%t = read('test.txt');
+%t.get([3, 5, 5])
+%t.display_tns();
 
-t.display_tns();
+t = read('/Users/meilicharles/Documents/MATLAB/uber.txt');
+t.num_collisions
 
 function t = read(file)
     T = readtable(file);
