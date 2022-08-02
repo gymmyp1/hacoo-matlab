@@ -5,7 +5,6 @@
 classdef hacoo
     properties
         table   %<-- hash table
-        depths  %<-- corresponding table depths
         nbuckets  %<-- number of slots in hash table
         modes   %<-- modes list
         nmodes %<-- number of modes
@@ -44,12 +43,16 @@ classdef hacoo
         function t = hash_init(t, nbuckets)
             t.nbuckets = nbuckets;
 
-            t.table = cell(t.nbuckets,1); %<-- create appropriate number of bucket slots
+            % create column vector w/ appropriate number of bucket slots
+            t.table = cell(t.nbuckets,1);
 
-            for i = 1:t.nbuckets %<-- create a blank list that will be populated w/ nodes in each table cell
+            % create a blank list in each table cell that's populated w/ empty nodes
+            for i = 1:t.nbuckets
                t.table{i} = cell(1);
+               t.table{i}{1} = node();
             end
 
+            % Set hashing parameters
             t.bits = ceil(log2(t.nbuckets));
             t.sx = ceil(t.bits/8)-1;
             t.sy = 4 * t.sx-1;
@@ -81,74 +84,61 @@ classdef hacoo
                 end
             end
 
-            if v == 0
-                return
-            end
-
             % find the index
-            morton = morton_encode(i);
-            [item, k] = t.search(morton); %search retrieves the item if found, or returns the struct where it should be if not found
+    		morton = morton_encode(i);
+    		[k, i] = t.search(morton);
 
-            
-            % insert accordingly
-            if item.flag ~= -1
-                %skip to the proper depth
-                t.table{k}.last.next.morton = morton;
-                t.table{k}.last.next.value = v;
-                t.table{k}.last.next.flag = 1;
-                t.table{k}.last.next.next = struct('morton',-1,'value',-1,'next',-1,'flag', -1');%<-- new dummy item at end of chain
-                %update the last item
-                t.table{k}.last = t.table{k}.last.next;
-                t.table{k}.depth = t.table{k}.depth + 1;
-
-                if t.table{k}.depth > t.max_chain_depth
-                    t.max_chain_depth = t.table{k}.depth;
+    		% insert accordingly
+    		if i == -1
+    			if v ~= 0
+    				t.table{k}{end+1} = node(morton, v);
+    				t.hash_curr_size = t.hash_curr_size + 1;
+    				depth = length(t.table{k});
+    				if depth > t.max_chain_depth
+    					t.max_chain_depth = depth;
+                    end
                 end
             else
-                %this is an unoccupied bucket
-                t.table{k}.morton = morton;
-                t.table{k}.value = v;
-                t.table{k}.flag = 1;
-                t.table{k}.depth = t.table{k}.depth + 1;
-                t.table{k}.next = struct('morton',-1,'value',-1,'next',-1,'flag', -1');%<-- new dummy item at end of chain
+    			if v ~=0
+    				t.table{k}{i} = node(morton, v);
+                else
+    				t.remove_node(k,i);
+                end
             end
 
-            t.hash_curr_size = t.hash_curr_size + 1;
             %fprintf("index set\n");
             
-
-            %{
     		% Check if we need to rehash
-    		if((self.hash_curr_size/self.nbuckets) > self.load_factor)
-    			self.rehash();
+    		if((t.hash_curr_size/t.nbuckets) > t.load_factor)
+    			t.rehash();
             end
-            %}
+            
         end
 
 
-
-
-        function [result,k] = search(t, m)
+        function [k,i] = search(t, m)
             %{
 		Search for a morton coded entry in the index hash.
 		Parameters:
 			m - The morton entry
 		Returns:
-            result - the item if found, empty dummy struct if not found 
-            k - bucket it occupies or should occupy.
+			If m is found, it returns the (k, i) tuple where k is
+			  the bucket and i is the index in the chain
+			if m is not found, it returns (k, -1).
             %}
             k = t.hash(m);
 
             for i = 1:length(t.table{k})
-                if result.morton == m
+                if t.table{k}{i}.morton == m
                     return
                 end
-                result = result.next; %<-- increment thru the chain
             end
+            i = -1;
+            return;
         end
 
-
-        %{
+        function item = get(t, i)
+            %{
 		Retrieve a tensor index. 
 		Parameters:
 			t - The tensor
@@ -156,14 +146,14 @@ classdef hacoo
 		Returns:
             item - the item if found, 0.0 if not found 
         %}
-        function item = get(t, i)
             addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/morton/
 
             morton = morton_encode(i);
-            item = t.search(morton);
+            [k,j] = t.search(morton);
 
-            if item.flag == 1
-                %fprintf("item found");
+            if j ~= -1
+                fprintf("item found");
+                item = t.table{k}{j};
                 return
             else
                 fprintf("item not found");
@@ -190,34 +180,45 @@ classdef hacoo
             k = mod(hash,t.nbuckets);
         end
 
-        function t = rehash(self)
-            old = self.table;
+        function t = rehash(t)
+            fprintf("Rehashing...\n");
+            old = t.table;
 
-            t = self.hash_init(self, self.nbuckets*2); %<-- double the number of buckets
+            t = t.hash_init(t, t.nbuckets*2); %<-- double the number of buckets
 
-            for i = 1:old.nbuckets %<-- loop over every bucket in old table
-                if old{i}.flag == -1
-                    continue
-                else
-                    %while no last item in chain 
+            % reinsert everything into the hash index
+    		for i = 1:old.nbuckets
+    			if old{i}{1}.morton == -1
+    				continue
                 end
-
+    			for item = 1:length(old{i})
+    				k = t.hash(item.morton);
+    				t.table{k}{end} = item;
+    				depth = length(t.table{k});
+    				if depth > self.max_chain_depth
+    					t.max_chain_depth = depth;
+                    end
+                end
             end
-
         end
 
-        %Function to print the tensor
+        function t = remove_node(t,k,i)
+            %need to find the element to remove, then slide back all data after that
+            % and resize the cell array
+            %fprintf("not implemented yet\n");
+        end
+
+        %Function to print all nonzero elements stored in the tensor.
         function display_tns(t)
             fprintf("Printing tensor...\n");
             for i = 1:t.nbuckets
-                item = t.table{i};
-                while item.flag ~= -1
-                    disp(item);
-                    item = item.next;
+                for j = 1:length(t.table{i})
+                    if t.table{i}{j}.morton ~= -1
+                        disp(t.table{i}{j});
+                    end
                 end
             end
         end
-
 
         %end of methods
     end

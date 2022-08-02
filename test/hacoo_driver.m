@@ -3,7 +3,7 @@
 addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 t = read('test.txt');
-%t.get([3, 5, 5])
+t.get([3, 5, 5])
 
 t.display_tns();
 
