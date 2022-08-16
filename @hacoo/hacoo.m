@@ -64,7 +64,6 @@ classdef hacoo
         %Function to insert an element in the hash table. Returns the
         %updated tensor.
         function t = set(t,i,v)
-            %addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/morton/
 
             % build the modes if we need
             if t.modes == 0
