@@ -8,14 +8,13 @@ classdef hacoo
         nbuckets  %<-- number of slots in hash table
         modes   %<-- modes list
         nmodes %<-- number of modes
+        nnz
         bits
         sx
         sy
         sz
         mask
-        num_collisions
         max_chain_depth
-        probe_time
         hash_curr_size %<-- number of nnz in the hash table
         load_factor %<-- percent of the table that can be filled before rehashing
     end
@@ -24,6 +23,7 @@ classdef hacoo
         function t = hacoo(varargin) %<-- Class constructor
             %HACOO Create a sparse tensor using HaCOO storage.
             NBUCKETS = 512;
+            t.nnz = varargin{1}
             t.hash_curr_size = 0;
             t.load_factor = 0.6;
 
@@ -31,8 +31,8 @@ classdef hacoo
             t = hash_init(t,NBUCKETS);
 
             if (nargin == 1)
-                t.modes = varargin{1};
-                t.nmodes = length(t.modes);
+                %t.modes = varargin{1};
+                %t.nmodes = length(t.modes);
             else
                 t.modes = 0;   %<-- EMPTY class constructor,no modes specified
                 t.nmodes = 0;
@@ -41,16 +41,13 @@ classdef hacoo
 
         % Initialize all hash table related things
         function t = hash_init(t, nbuckets)
-            t.nbuckets = nbuckets;
+            %t.nbuckets = nbuckets;
+            %Calculate the number of buckets ahead of time = 2^(log2 nnz/load
+            %factor
+            t.nbuckets = power(2,ceil(log2(t.nnz/t.load_factor)))
 
             % create column vector w/ appropriate number of bucket slots
             t.table = cell(t.nbuckets,1);
-
-            % create a blank cell array in each table slot. entries are of
-            % "node" type
-            %for i = 1:t.nbuckets
-            %   t.table{i} = cell(1);
-            %end
 
             % Set hashing parameters
             t.bits = ceil(log2(t.nbuckets));
@@ -61,15 +58,13 @@ classdef hacoo
             end
             t.sz = ceil(t.bits/2);
             t.mask = t.nbuckets-1;
-            t.num_collisions = 0;
             t.max_chain_depth = 0;
-            t.probe_time = 0;
         end
 
         %Function to insert an element in the hash table. Returns the
         %updated tensor.
         function t = set(t,i,v)
-            addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/morton/
+            %addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/morton/
 
             % build the modes if we need
             if t.modes == 0
@@ -159,7 +154,7 @@ classdef hacoo
 		Returns:
             item - the item if found, 0.0 if not found 
         %}
-            addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/morton/
+            %addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/morton/
 
             %morton = morton_encode(i);
             morton = str2double(sprintf('%d', i));
@@ -225,7 +220,7 @@ classdef hacoo
         function t = remove_node(t,k,i)
             %need to find the element to remove, then slide back all data after that
             % and resize the cell array
-            %fprintf("not implemented yet\n");
+            fprintf("not implemented yet\n");
         end
 
         %Function to print all nonzero elements stored in the tensor.

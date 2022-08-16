@@ -1,19 +1,20 @@
 %Driver code for testing HaCOO class
 
-addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
+addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
 %t = read('test.txt');
 %t.get([3, 5, 5])
 %t.display_tns();
 
-%t = read('/Users/meilicharles/Documents/MATLAB/uber.txt');
-%t.num_collisions
+t = read('uber.txt');
+t.max_chain_depth
 
 function t = read(file)
     T = readtable(file);
+    nnz = height(T);
 
     %Create the tensor
-    t = hacoo();
+    t = hacoo(nnz);
     
     for row = 1:height(T)
         row = T(row,:);
