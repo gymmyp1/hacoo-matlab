@@ -46,12 +46,6 @@ classdef hacoo
             % create column vector w/ appropriate number of bucket slots
             t.table = cell(t.nbuckets,1);
 
-            % create a blank cell array in each table slot. entries are of
-            % "node" type
-            %for i = 1:t.nbuckets
-            %   t.table{i} = cell(1);
-            %end
-
             % Set hashing parameters
             t.bits = ceil(log2(t.nbuckets));
             t.sx = ceil(t.bits/8)-1;
@@ -225,7 +219,7 @@ classdef hacoo
         function t = remove_node(t,k,i)
             %need to find the element to remove, then slide back all data after that
             % and resize the cell array
-            %fprintf("not implemented yet\n");
+            fprintf("not implemented yet\n");
         end
 
         %Function to print all nonzero elements stored in the tensor.
