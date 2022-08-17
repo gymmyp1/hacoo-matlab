@@ -23,7 +23,7 @@ classdef hacoo
         function t = hacoo(varargin) %<-- Class constructor
             %HACOO Create a sparse tensor using HaCOO storage.
             NBUCKETS = 512;
-            t.nnz = varargin{1}
+            t.nnz = varargin{1};
             t.hash_curr_size = 0;
             t.load_factor = 0.6;
 
@@ -44,7 +44,7 @@ classdef hacoo
             %t.nbuckets = nbuckets;
             %Calculate the number of buckets ahead of time = 2^(log2 nnz/load
             %factor
-            t.nbuckets = power(2,ceil(log2(t.nnz/t.load_factor)))
+            t.nbuckets = power(2,ceil(log2(t.nnz/t.load_factor)));
 
             % create column vector w/ appropriate number of bucket slots
             t.table = cell(t.nbuckets,1);
@@ -79,14 +79,14 @@ classdef hacoo
             end
 
             % find the index
-    		%morton = morton_encode(i);
-            morton = str2double(sprintf('%d', i));
+    		morton_id = morton_encode(i); %actual id to search for index
+            morton = str2double(sprintf('%d', i)); %not really morton anymore, this is used for hashing
     		[k, i] = t.search(morton);
 
     		% insert accordingly
     		if i == -1
     			if v ~= 0
-    				t.table{k}{end+1} = node(morton, v);
+    				t.table{k}{end+1} = node(morton_id, v);
     				t.hash_curr_size = t.hash_curr_size + 1;
     				depth = length(t.table{k});
     				if depth > t.max_chain_depth
@@ -95,7 +95,7 @@ classdef hacoo
                 end
             else
     			if v ~=0
-    				t.table{k}{i} = node(morton, v);
+    				t.table{k}{i} = node(morton_id, v);
                 else
     				t.remove_node(k,i);
                 end
@@ -152,11 +152,10 @@ classdef hacoo
             i - The tensor index to retrieve
 		Returns:
             item - the item if found, 0.0 if not found 
-        %}
-            %addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/morton/
+            %}
 
-            %morton = morton_encode(i);
-            morton = str2double(sprintf('%d', i));
+            morton = morton_encode(i);
+            %morton = str2double(sprintf('%d', i));
             [k,j] = t.search(morton);
 
             if j ~= -1

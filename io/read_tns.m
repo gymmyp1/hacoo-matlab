@@ -1,17 +1,8 @@
-%Driver code for testing HaCOO class
+%figure out how to keep this as a separate file
 
 addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
-%t = read('test.txt');
-%t.get([3, 5, 5])
-%t.display_tns();
-
-tic
-t = read('uber.txt');
-t.max_chain_depth
-toc
-
-function t = read(file)
+function t = read_tns(file)
     T = readtable(file);
     nnz = height(T);
 
