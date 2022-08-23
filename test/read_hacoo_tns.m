@@ -1,12 +1,14 @@
 %Read a sparse tensor in HaCOO file format:
 %
-%morton_id value hash_key 
+%Format: morton_id value hash_key 
 % (subsequent entries w/ same hash key belong in corresponding order in the
 % chain)
 
-file = 'test_hacoo.txt';
+tic
+file = 'uber_hacoo.txt';
 t = read_hacoo(file);
-t.display_tns();
+%t.display_tns();
+toc
 
 function t = read_hacoo(file)
     T = readtable(file);

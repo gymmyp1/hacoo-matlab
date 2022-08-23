@@ -1,13 +1,12 @@
-%testing writing tensor to file
-%format: nbuckets 
-% key in table node(index,value)
+%testing writing tensor to file in HaCOO format
 addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
 t = read_tns('test.txt');
 
 file = "test_hacoo.txt";
-write_tns(t,file);
+t.write_tns(file);
 
+%{
 function write_tns(t,file)
     %write tensor to a file in HaCoo fomat
     fprintf("Writing tensor...\n");
@@ -22,6 +21,7 @@ function write_tns(t,file)
     end
     fclose(fileID);
 end
+%}
 
 function t = read_tns(file)
     T = readtable(file);

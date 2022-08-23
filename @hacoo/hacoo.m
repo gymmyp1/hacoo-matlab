@@ -61,6 +61,40 @@ classdef hacoo
             t.max_chain_depth = 0;
         end
 
+        %{
+            Function to set item in hash table, after vectorizing code.
+            Parameters:
+                idx - concatenated index
+                v - index value
+                k - hash key, the slot in the hash table the index occupies
+        %}
+        function t = set2(t,idx,v,k)
+            
+    		% We already have the index and key, insert accordingly
+    		
+            if v ~= 0
+                t.table{k}{end+1} = node(idx, v);
+                t.hash_curr_size = t.hash_curr_size + 1;
+                depth = length(t.table{k});
+                if depth > t.max_chain_depth
+	                t.max_chain_depth = depth;
+                end
+            else
+                %remove entry in table
+            end
+
+            %fprintf("index set\n");
+            
+    		% Check if we need to rehash
+    		if((t.hash_curr_size/t.nbuckets) > t.load_factor)
+    			t = t.rehash();
+            end
+
+
+        end
+
+
+        %This may have become obsolete.
         %Function to insert an element in the hash table. Returns the
         %updated tensor.
         function t = set(t,i,v)
@@ -221,7 +255,46 @@ classdef hacoo
             fprintf("not implemented yet\n");
         end
 
-        %Function to print all nonzero elements stored in the tensor.
+        function mttkrp(t,u,n)
+        %{
+		Carry out mttkrp between the tensor and an array of matrices,
+		unfolding the tensor along mode n.
+
+		Parameters:
+			u - A list of numpy matrices, these correspond to the modes
+				in the tensor, other than n. If i is the dimension in
+				mode x, then u[x] must be an i x f matrix.
+			n - The mode along which the tensor is unfolded for the
+				product.
+		Returns:
+			A numpy matrix with dimensions i_n x f
+            %}
+        end
+
+        function write_tns(t,file)
+            %{
+                Write a sparse tensor to a file using HaCOO file format:
+            
+                Format: morton_id value hash_key
+                (subsequent entries w/ same hash key belong in corresponding order in the
+                chain)
+            %}
+            fprintf("Writing tensor...\n");
+            fileID = fopen(file,'w');
+
+            for i = 1:t.nbuckets
+                for j = 1:length(t.table{i})
+                    if t.table{i}{j}.morton ~= -1
+                        fprintf(fileID,'%d %f %d\n',t.table{i}{j}.morton,t.table{i}{j}.value,i);
+                    end
+                end
+            end
+            fclose(fileID);
+            fprintf("Finished.\n");
+        end
+
+
+        % Function to print all nonzero elements stored in the tensor.
         function display_tns(t)
             fprintf("Printing tensor...\n");
             for i = 1:t.nbuckets
@@ -233,7 +306,7 @@ classdef hacoo
             end
         end
 
-        % Clear all entries and start w/ a new tensor.
+        % Clear all entries and start with a new hash table.
         function t = clear(t, nbuckets)
             t = t.hash_init(t,nbuckets);
         end

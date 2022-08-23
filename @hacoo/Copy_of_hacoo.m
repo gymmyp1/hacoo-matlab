@@ -8,14 +8,13 @@ classdef hacoo
         nbuckets  %<-- number of slots in hash table
         modes   %<-- modes list
         nmodes %<-- number of modes
+        nnz
         bits
         sx
         sy
         sz
         mask
-        num_collisions
         max_chain_depth
-        probe_time
         hash_curr_size %<-- number of nnz in the hash table
         load_factor %<-- percent of the table that can be filled before rehashing
     end
@@ -24,6 +23,7 @@ classdef hacoo
         function t = hacoo(varargin) %<-- Class constructor
             %HACOO Create a sparse tensor using HaCOO storage.
             NBUCKETS = 512;
+            t.nnz = varargin{1};
             t.hash_curr_size = 0;
             t.load_factor = 0.6;
 
@@ -31,8 +31,8 @@ classdef hacoo
             t = hash_init(t,NBUCKETS);
 
             if (nargin == 1)
-                t.modes = varargin{1};
-                t.nmodes = length(t.modes);
+                %t.modes = varargin{1};
+                %t.nmodes = length(t.modes);
             else
                 t.modes = 0;   %<-- EMPTY class constructor,no modes specified
                 t.nmodes = 0;
@@ -41,7 +41,10 @@ classdef hacoo
 
         % Initialize all hash table related things
         function t = hash_init(t, nbuckets)
-            t.nbuckets = nbuckets;
+            %t.nbuckets = nbuckets;
+            %Calculate the number of buckets ahead of time = 2^(log2 nnz/load
+            %factor
+            t.nbuckets = power(2,ceil(log2(t.nnz/t.load_factor)));
 
             % create column vector w/ appropriate number of bucket slots
             t.table = cell(t.nbuckets,1);
@@ -55,15 +58,12 @@ classdef hacoo
             end
             t.sz = ceil(t.bits/2);
             t.mask = t.nbuckets-1;
-            t.num_collisions = 0;
             t.max_chain_depth = 0;
-            t.probe_time = 0;
         end
 
         %Function to insert an element in the hash table. Returns the
         %updated tensor.
         function t = set(t,i,v)
-            addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/morton/
 
             % build the modes if we need
             if t.modes == 0
@@ -79,14 +79,14 @@ classdef hacoo
             end
 
             % find the index
-    		%morton = morton_encode(i);
-            morton = str2double(sprintf('%d', i));
+    		morton_id = morton_encode(i); %actual id to search for index
+            morton = str2double(sprintf('%d', i)); %not really morton anymore, this is used for hashing
     		[k, i] = t.search(morton);
 
     		% insert accordingly
     		if i == -1
     			if v ~= 0
-    				t.table{k}{end+1} = node(morton, v);
+    				t.table{k}{end+1} = node(morton_id, v);
     				t.hash_curr_size = t.hash_curr_size + 1;
     				depth = length(t.table{k});
     				if depth > t.max_chain_depth
@@ -95,7 +95,7 @@ classdef hacoo
                 end
             else
     			if v ~=0
-    				t.table{k}{i} = node(morton, v);
+    				t.table{k}{i} = node(morton_id, v);
                 else
     				t.remove_node(k,i);
                 end
@@ -152,11 +152,10 @@ classdef hacoo
             i - The tensor index to retrieve
 		Returns:
             item - the item if found, 0.0 if not found 
-        %}
-            addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/morton/
+            %}
 
-            %morton = morton_encode(i);
-            morton = str2double(sprintf('%d', i));
+            morton = morton_encode(i);
+            %morton = str2double(sprintf('%d', i));
             [k,j] = t.search(morton);
 
             if j ~= -1
@@ -222,7 +221,46 @@ classdef hacoo
             fprintf("not implemented yet\n");
         end
 
-        %Function to print all nonzero elements stored in the tensor.
+        function mttkrp(t,u,n)
+        %{
+		Carry out mttkrp between the tensor and an array of matrices,
+		unfolding the tensor along mode n.
+
+		Parameters:
+			u - A list of numpy matrices, these correspond to the modes
+				in the tensor, other than n. If i is the dimension in
+				mode x, then u[x] must be an i x f matrix.
+			n - The mode along which the tensor is unfolded for the
+				product.
+		Returns:
+			A numpy matrix with dimensions i_n x f
+            %}
+        end
+
+        function write_tns(t,file)
+            %{
+                Write a sparse tensor to a file using HaCOO file format:
+            
+                Format: morton_id value hash_key
+                (subsequent entries w/ same hash key belong in corresponding order in the
+                chain)
+            %}
+            fprintf("Writing tensor...\n");
+            fileID = fopen(file,'w');
+
+            for i = 1:t.nbuckets
+                for j = 1:length(t.table{i})
+                    if t.table{i}{j}.morton ~= -1
+                        fprintf(fileID,'%d %f %d\n',t.table{i}{j}.morton,t.table{i}{j}.value,i);
+                    end
+                end
+            end
+            fclose(fileID);
+            fprintf("Finished.\n");
+        end
+
+
+        % Function to print all nonzero elements stored in the tensor.
         function display_tns(t)
             fprintf("Printing tensor...\n");
             for i = 1:t.nbuckets
@@ -234,7 +272,7 @@ classdef hacoo
             end
         end
 
-        % Clear all entries and start w/ a new tensor.
+        % Clear all entries and start with a new hash table.
         function t = clear(t, nbuckets)
             t = t.hash_init(t,nbuckets);
         end
