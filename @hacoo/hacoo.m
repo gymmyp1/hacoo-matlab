@@ -79,7 +79,6 @@ classdef hacoo
             
     		% We already have the index and key, insert accordingly
             if v ~= 0
-                %t.table{k}
                 t.table{k}{end+1} = node(idx, v);
                 t.hash_curr_size = t.hash_curr_size + 1;
                 depth = length(t.table{k});

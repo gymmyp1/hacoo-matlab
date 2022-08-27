@@ -31,6 +31,9 @@ prog = 0;
     for i = 1:nnz
         %t = t.set2(summed_idx(i),vals(i),keys(i));
         k = keys(i);
+        v = vals(i);
+        si = summed_idx(i);
+        
          %check if any keys are equal to 0, due to matlab indexing
             if k < 1
                 k = 1;
@@ -38,7 +41,7 @@ prog = 0;
             
     		% We already have the index and key, insert accordingly
             if v ~= 0
-                hashtable{k}{end+1} = node(summed_idx(i), vals(i));
+                hashtable{k}{end+1} = node(si, v);
                 t.hash_curr_size = t.hash_curr_size + 1;
                 depth = length(hashtable{k});
                 if depth > t.max_chain_depth
