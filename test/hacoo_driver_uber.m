@@ -5,22 +5,53 @@ addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
 tic
 file = 'uber.txt';
-file = 'test.txt';
-table = readtable(file);
-table = table2array(table);
+%file = 'test.txt';
+hashtable = readtable(file);
+hashtable = table2array(hashtable);
+
+idx = hashtable(:,1:end-1);
+vals = hashtable(:,end);
+
+summed_idx = cast(sum(idx,2),'int32');
+summed_idx = summed_idx';
 
 %initialize hacoo structure
-t = hacoo();
+nnz = length(summed_idx);
+load_factor=0.6;
+nbuckets = power(2,ceil(log2(nnz/load_factor)));
+t = hacoo(nbuckets);
+%t = hacoo();
 
-vals = table(:,end);
-idx = table(:,1:end-1);
+% hash indexes for the hash keys
+keys = arrayfun(@t.hash, summed_idx);
 
-summed_idx = cast(sum(idx,2),'int32')
-summed_idx = summed_idx'
-
-% hash the indexes, append new column to table?
-key = arrayfun(@t.hash, summed_idx)
-%apply operation across all rows
+hashtable = cell(t.nbuckets,1);
+%set everything in the table
+prog = 0;
+    for i = 1:nnz
+        %t = t.set2(summed_idx(i),vals(i),keys(i));
+        k = keys(i);
+         %check if any keys are equal to 0, due to matlab indexing
+            if k < 1
+                k = 1;
+            end
+            
+    		% We already have the index and key, insert accordingly
+            if v ~= 0
+                hashtable{k}{end+1} = node(summed_idx(i), vals(i));
+                t.hash_curr_size = t.hash_curr_size + 1;
+                depth = length(hashtable{k});
+                if depth > t.max_chain_depth
+	                t.max_chain_depth = depth;
+                end
+            else
+                %remove entry in table
+            end
+        prog = prog + 1;
+        if mod(prog,100000) == 0
+            prog
+        end
+    end
 
 toc
 
@@ -70,28 +101,6 @@ end
 t.max_chain_depth
 %}
 
-
-function n = concaten(row) 
-    n = strcat(num2str(row));
-    n = str2num(n);
-end
-
-function k = hash(t,i)
-            %{
-		Hash the index and return the morton code and key.
-
-		Parameters:
-            i - sparse tensor index as the summed index
-
-		Returns:
-			key
-            %}
-            hash = i;
-            hash = hash + (bitshift(hash,t.sx)); %bit shift to the left
-            hash = bitxor(hash, bitshift(hash,-t.sy)); %bit shift to the right
-            hash = hash + (bitshift(hash,t.sz)); %bit shift to the left
-            k = mod(hash,t.nbuckets);
-end
 
 function t = read(file, m)
     modes = m;

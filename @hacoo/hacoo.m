@@ -71,9 +71,13 @@ classdef hacoo
                 k - hash key, the slot in the hash table the index occupies
         %}
         function t = set2(t,idx,v,k)
+
+            %check if any keys are equal to 0, due to matlab indexing
+            if k < 1
+                k = 1;
+            end
             
     		% We already have the index and key, insert accordingly
-    		
             if v ~= 0
                 %t.table{k}
                 t.table{k}{end+1} = node(idx, v);
