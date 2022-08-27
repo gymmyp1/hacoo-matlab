@@ -7,18 +7,8 @@ t = read('test.txt',3);
 t.display_tns();
 
 
-
-tic
-t = read('uber.txt',4);
-t.max_chain_depth
-toc
-
-
-%file = "uber_hacoo.txt";
-%t.write_tns(file);
-
 function n = concaten(i) 
-    n = strcat(num2str(i));
+    n = strcat(num2str(i))
 end
 
 function k = hash(i)
@@ -48,15 +38,16 @@ function t = read(file, m)
     fclose(fileID);
     %make sure to remove indexes with 0 values later...
     data = data';
-    vals = data(:,end);
-    
     numRows = size(data,1);
     numCols = size(data,2);
+
     idx = data(:,1:numCols-1);
+    vals = data(:,end);
     
     %concat the index
-    conc = arrayfun(@concaten, idx,'UniformOutput',false);
-    R = str2double(conc);
+    conc = arrayfun(@concaten, idx);
+    R = str2num(conc);
+
     %may need to do some kind of check to make sure concatenated index is
     %unique & using consistent # of bits
     
@@ -65,11 +56,7 @@ function t = read(file, m)
       
     %Create the tensor
     nnz = height(idx);
-    if nnz > 512
-        t = hacoo(nnz);
-    else
-        t = hacoo(512);
-    end
+    t = hacoo();
 
     prog = 0;
     for i = 1:nnz

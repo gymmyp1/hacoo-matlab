@@ -8,7 +8,6 @@ classdef hacoo
         nbuckets  %<-- number of slots in hash table
         modes   %<-- modes list
         nmodes %<-- number of modes
-        nnz
         bits
         sx
         sy
@@ -23,28 +22,31 @@ classdef hacoo
         function t = hacoo(varargin) %<-- Class constructor
             %HACOO Create a sparse tensor using HaCOO storage.
             NBUCKETS = 512;
-            t.nnz = varargin{1};
+            
             t.hash_curr_size = 0;
             t.load_factor = 0.6;
-
-            % Initialize all hash table related things
-            t = hash_init(t,NBUCKETS);
-
+            
             if (nargin == 1)
+                NBUCKETS = varargin{1};
                 %t.modes = varargin{1};
                 %t.nmodes = length(t.modes);
+               
             else
                 t.modes = 0;   %<-- EMPTY class constructor,no modes specified
                 t.nmodes = 0;
+                NBUCKETS = 512;
             end
+
+            % Initialize all hash table related things
+            t = hash_init(t,NBUCKETS);
         end
 
         % Initialize all hash table related things
-        function t = hash_init(t, nbuckets)
-            %t.nbuckets = nbuckets;
+        function t = hash_init(t,n)
+
+            t.nbuckets = n;
             %Calculate the number of buckets ahead of time = 2^(log2 nnz/load
             %factor
-            t.nbuckets = power(2,ceil(log2(t.nnz/t.load_factor)));
 
             % create column vector w/ appropriate number of bucket slots
             t.table = cell(t.nbuckets,1);
@@ -73,6 +75,7 @@ classdef hacoo
     		% We already have the index and key, insert accordingly
     		
             if v ~= 0
+                %t.table{k}
                 t.table{k}{end+1} = node(idx, v);
                 t.hash_curr_size = t.hash_curr_size + 1;
                 depth = length(t.table{k});
@@ -226,7 +229,7 @@ classdef hacoo
             old = t.table;
 
             t = t.hash_init(t.nbuckets*2); %<-- double the number of buckets
-            t.nbuckets
+            %t.nbuckets
             % reinsert everything into the hash index
     		for i = 1:length(old)
     			if isempty(old{i})
