@@ -4,26 +4,35 @@
 addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
 tic
-file = 'uber.txt';
-%file = 'test.txt';
+%file = 'uber.txt';
+file = 'test.txt';
 hashtable = readtable(file);
 hashtable = table2array(hashtable);
 
 idx = hashtable(:,1:end-1);
 vals = hashtable(:,end);
 
-summed_idx = cast(sum(idx,2),'int32');
-summed_idx = summed_idx';
+nmodes = size(idx,2);
+format = '';
+for d =1:nmodes
+    format = strcat(format,'%i');
+end
+
+%Trying to figure out a way to concatenate indexes over each row...
+%concat_idx = sscanf(sprintf(format,idx(1,:)),'%d')
+
+concat_idx = rowfun(@cc_idx, idx)
+concat_idx = concat_idx';
 
 %initialize hacoo structure
-nnz = length(summed_idx);
+nnz = length(concat_idx);
 load_factor=0.6;
 nbuckets = power(2,ceil(log2(nnz/load_factor)));
 t = hacoo(nbuckets);
 %t = hacoo();
 
 % hash indexes for the hash keys
-keys = arrayfun(@t.hash, summed_idx);
+keys = arrayfun(@t.hash, concat_idx);
 
 hashtable = cell(t.nbuckets,1);
 %set everything in the table
@@ -32,7 +41,7 @@ prog = 0;
         %t = t.set2(summed_idx(i),vals(i),keys(i));
         k = keys(i);
         v = vals(i);
-        si = summed_idx(i);
+        si = concat_idx(i);
         
          %check if any keys are equal to 0, due to matlab indexing
             if k < 1
@@ -58,91 +67,11 @@ prog = 0;
 
 toc
 
-%{
-modes = 4;
-fileID = 'uber.txt';
-formatSpec = '%d %d';
-sizeA = [modes+1 Inf];
-fileID = fopen(fileID,'r');
-data = fscanf(fileID,formatSpec,sizeA);
-fclose(fileID);
-%make sure to remove indexes with 0 values later...
-data = data'
 
-
-numRows = size(data,1);
-numCols = size(data,2);
-
-idx = data(:,1:numCols-1);
-vals = data(:,end);
-
-%concat the index
-conc = arrayfun(@concaten, idx,'UniformOutput',false);
-conc_idx = str2double(conc);
-
-%may need to do some kind of check to make sure concatenated index is
-%unique & using consistent # of bits
-
-hash_keys = arrayfun(@hash, conc_idx);
-
-  
-%Create the tensor
-nnz = height(idx);
-load_factor=0.6;
-nbuckets = power(2,ceil(log2(nnz/load_factor)));
-t = hacoo(nbuckets);
-
-prog = 0;
-for i = 1:nnz
-    t = t.set2(conc_idx(i),vals(i),hash_keys(i));
-    prog = prog + 1;
-    if mod(prog,10000) == 0
-        prog
-    end
+function r = cc_idx(idx)
+    r = sscanf(sprintf('%i%i%i',idx),'%i');
 end
 
-t.max_chain_depth
-%}
-
-
 function t = read(file, m)
-    modes = m;
-    fileID = file;
-    formatSpec = '%d %d';
-    sizeA = [modes+1 Inf];
-    fileID = fopen(fileID,'r');
-    data = fscanf(fileID,formatSpec,sizeA);
-    fclose(fileID);
-    %make sure to remove indexes with 0 values later...
-    data = data';
-    numRows = size(data,1);
-    numCols = size(data,2);
-
-    idx = data(:,1:numCols-1);
-    vals = data(:,end);
-    
-    %concat the index
-    conc = arrayfun(@concaten, idx,'UniformOutput',false);
-    conc_idx = str2double(conc);
-
-    %may need to do some kind of check to make sure concatenated index is
-    %unique & using consistent # of bits
-    
-    hash_keys = arrayfun(@hash, conc_idx);
-
-      
-    %Create the tensor
-    nnz = height(idx);
-    load_factor=0.6;
-    nbuckets = power(2,ceil(log2(nnz/load_factor)));
-    t = hacoo(nbuckets);
-
-    prog = 0;
-    for i = 1:nnz
-        t = t.set2(conc_idx(i),vals(i),hash_keys(i));
-        prog = prog + 1;
-        if mod(prog,100000) == 0
-            prog
-        end
-    end
+   
 end
