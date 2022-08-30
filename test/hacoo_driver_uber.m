@@ -18,21 +18,25 @@ for d =1:nmodes
     format = strcat(format,'%i');
 end
 
+
+summed_idx = cast(sum(idx,2),'int32');
+summed_idx = summed_idx';
+
 %Trying to figure out a way to concatenate indexes over each row...
 %concat_idx = sscanf(sprintf(format,idx(1,:)),'%d')
 
-concat_idx = rowfun(@cc_idx, idx)
-concat_idx = concat_idx';
+%concat_idx = rowfun(@cc_idx, idx)
+%concat_idx = concat_idx';
 
 %initialize hacoo structure
-nnz = length(concat_idx);
+nnz = length(summed_idx);
 load_factor=0.6;
 nbuckets = power(2,ceil(log2(nnz/load_factor)));
 t = hacoo(nbuckets);
 %t = hacoo();
 
 % hash indexes for the hash keys
-keys = arrayfun(@t.hash, concat_idx);
+keys = arrayfun(@t.hash, summed_idx);
 
 hashtable = cell(t.nbuckets,1);
 %set everything in the table
@@ -41,7 +45,7 @@ prog = 0;
         %t = t.set2(summed_idx(i),vals(i),keys(i));
         k = keys(i);
         v = vals(i);
-        si = concat_idx(i);
+        si = summed_idx(i);
         
          %check if any keys are equal to 0, due to matlab indexing
             if k < 1
@@ -67,10 +71,11 @@ prog = 0;
 
 toc
 
-
+%{
 function r = cc_idx(idx)
     r = sscanf(sprintf('%i%i%i',idx),'%i');
 end
+%}
 
 function t = read(file, m)
    

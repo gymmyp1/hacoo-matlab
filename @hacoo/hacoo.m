@@ -261,7 +261,7 @@ classdef hacoo
             fprintf("not implemented yet\n");
         end
 
-        function mttkrp(t,u,n)
+        function mttkrp(self,u,n)
         %{
 		Carry out mttkrp between the tensor and an array of matrices,
 		unfolding the tensor along mode n.
@@ -274,7 +274,53 @@ classdef hacoo
 				product.
 		Returns:
 			A numpy matrix with dimensions i_n x f
-            %}
+        %}
+            
+            % number of columns
+		    fmax = size(u(1),2);
+    
+		    % create the result array
+		    m = zeros(self.modes(n), fmax);
+    
+		    % go through each column
+		    for f=1:fmax:
+			    % accumulation arrays
+			    z=0;
+			    t=[];
+			    tind=[];
+    
+			    % go through every non-zero
+			    for k=1:self.nbuckets
+				    if isempty(t.table{k}):
+					    continue
+                    end
+				    for entry=1:length(t.table{k})
+					    idx = mort.decode(entry(0), self.nmodes);
+					    t.append(entry(1))
+					    tind.append(idx(n)
+					    z = length(t)-1;
+    
+					    % multiply by the factor matrix entries
+					    i=0;
+					    for b=1:size(u,2)
+						    % skip the unfolded mode
+						    if i==n
+							    i = i+1;
+							    continue
+                            end
+    
+						    % multiply the factor and advance to the next
+						    t(z) = b(idx(i), f) * t(z);
+						    i = i+1;
+                        
+                    end
+			    % accumulate m(:,f)
+			    for z =1:length(t)
+				    m(tind(z),f) = m(tind(z), f) + t(z);
+                end
+   		     end
+		    return m;
+        
         end
 
         function write_tns(t,file)
