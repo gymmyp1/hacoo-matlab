@@ -3,8 +3,13 @@ addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 %Read a tns file and separate indexes and values into separate matrices.
 
+tic
+
 [idx,vals] = read_tns('test.txt');
-t = hacoo(idx,vals,[5 5 5]);
+[idx,vals] = read_tns('uber.txt');
+t = hacoo(idx,vals);
+
+toc
 
 function [idx,vals] = read_tns(file)
     table = readtable(file);

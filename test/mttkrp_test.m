@@ -11,7 +11,7 @@ U{1} = a;
 U{2} = b;
 U{3} = c;
 
-subs = [1,1,1;
+idx = [1,1,1;
         1,2,1;
         1,3,1;
         2,1,1;
@@ -25,12 +25,9 @@ subs = [1,1,1;
         2,3,4];
 
 vals = [1;2;3;4;5;6;7;8;9;10;11;12];
-%t = hacoo(128,[2,3,4]); %<--the tensor
-%t = hacoo(subs,vals);
+t = hacoo(idx,vals); %<--the tensor
 
-n = 2; %<--the dimension to matricize with respect to.
-
-%t.mttkrp(t,U,1) %<--matricize with respect to dimension 1.
-%t.mttkrp(t,U,2)
-%t.mttkrp(t,U,3)
+t.mttkrp(U,1) %<--matricize with respect to dimension 1.
+%t.mttkrp(U,2)
+%t.mttkrp(U,3)
 

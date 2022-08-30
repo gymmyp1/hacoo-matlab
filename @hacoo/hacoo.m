@@ -24,10 +24,10 @@ classdef hacoo
             t.hash_curr_size = 0;
             t.load_factor = 0.6;
             
-            if (nargin == 3) %<-- input included subs and vals
+            if (nargin == 2) %<-- input included subs and vals
                 idx = varargin{1};
                 vals = varargin{2};
-                t.modes = varargin{3};
+                t.modes = max(idx);
                 t.nmodes = length(t.modes);
                
                 nnz = size(idx,1);
@@ -106,7 +106,7 @@ classdef hacoo
                         %remove entry in table
                     end
                 prog = prog + 1;
-                if mod(prog,100000) == 0
+                if mod(prog,10000) == 0
                     prog
                 end
             end
@@ -287,6 +287,7 @@ classdef hacoo
 			A matrix with dimensions i_n x f
         %}
             
+
             % number of columns
 		    fmax = size(u(1),2);
     
@@ -302,14 +303,15 @@ classdef hacoo
     
 			    % go through every non-zero
 			    for k=1:self.nbuckets
-				    if isempty(t.table{k})
+				    if isempty(self.table{k})
 					    continue
                     end
-				    for entry=1:length(t.table{k})
-					    idx = mort.decode(entry(0), self.nmodes);
-					    t.append(entry(1));
-					    tind.append(idx(n));
-					    z = length(t)-1;
+				    for entry=1:length(self.table{k})
+					    idx = morton_decode(self.table{k}{entry}.morton, self.nmodes);
+					    t(end+1) = entry(1);
+					    tind(end+1) = idx(n);
+					    %z = length(t)-1;
+                        z = length(t)
     
 					    % multiply by the factor matrix entries
 					    i=0;
