@@ -21,16 +21,19 @@ classdef hacoo
 
         function t = hacoo(varargin) %<-- Class constructor
             %HACOO Create a sparse tensor using HaCOO storage.
-            NBUCKETS = 512;
-            
             t.hash_curr_size = 0;
             t.load_factor = 0.6;
             
-            if (nargin == 1)
-                NBUCKETS = varargin{1};
-                %t.modes = varargin{1};
-                %t.nmodes = length(t.modes);
+            if (nargin == 3) %<-- input included subs and vals
+                idx = varargin{1};
+                vals = varargin{2};
+                t.modes = varargin{3};
+                t.nmodes = length(t.modes);
                
+                nnz = size(idx,1);
+                load_factor=0.6;
+                NBUCKETS = power(2,ceil(log2(nnz/load_factor)));
+
             else
                 t.modes = 0;   %<-- EMPTY class constructor,no modes specified
                 t.nmodes = 0;
@@ -39,14 +42,14 @@ classdef hacoo
 
             % Initialize all hash table related things
             t = hash_init(t,NBUCKETS);
+
+            t = t.init_vals(idx,vals);
         end
 
         % Initialize all hash table related things
         function t = hash_init(t,n)
 
             t.nbuckets = n;
-            %Calculate the number of buckets ahead of time = 2^(log2 nnz/load
-            %factor
 
             % create column vector w/ appropriate number of bucket slots
             t.table = cell(t.nbuckets,1);
@@ -63,44 +66,52 @@ classdef hacoo
             t.max_chain_depth = 0;
         end
 
-        %{
-            Function to set item in hash table, after vectorizing code.
-            Parameters:
-                idx - concatenated index
-                v - index value
-                k - hash key, the slot in the hash table the index occupies
-        %}
-        function t = set2(t,idx,v,k)
+        function t = init_vals(t,idx,vals)
+            %{
+		Set a list of subscripts and values in the sparse tensor hash table.
+		Parameters:
+			subs - List of nonzero subscripts
+            vals - List of nonzero tensor values
+		Returns:
+			A hacoo data type with a populated hash table.
+            %}
 
-            %check if any keys are equal to 0, due to matlab indexing
-            if k < 1
-                k = 1;
-            end
-            
-    		% We already have the index and key, insert accordingly
-            if v ~= 0
-                t.table{k}{end+1} = node(idx, v);
-                t.hash_curr_size = t.hash_curr_size + 1;
-                depth = length(t.table{k});
-                if depth > t.max_chain_depth
-	                t.max_chain_depth = depth;
+            summed_idx = cast(sum(idx,2),'int32');
+            summed_idx = summed_idx';
+
+            % hash indexes for the hash keys
+            keys = arrayfun(@t.hash, summed_idx);
+
+            %Set everything in the table
+            prog = 0;
+            for i = 1:size(idx,1)
+                k = keys(i);
+                v = vals(i);
+                si = summed_idx(i);
+                
+                 %check if any keys are equal to 0, due to matlab indexing
+                    if k < 1
+                        k = 1;
+                    end
+                    
+		            % We already have the index and key, insert accordingly
+                    if v ~= 0
+                        t.table{k}{end+1} = node(si, v);
+                        t.hash_curr_size = t.hash_curr_size + 1;
+                        depth = length(t.table{k});
+                        if depth > t.max_chain_depth
+                            t.max_chain_depth = depth;
+                        end
+                    else
+                        %remove entry in table
+                    end
+                prog = prog + 1;
+                if mod(prog,100000) == 0
+                    prog
                 end
-            else
-                %remove entry in table
             end
-
-            %fprintf("index set\n");
-            
-    		% Check if we need to rehash
-    		if((t.hash_curr_size/t.nbuckets) > t.load_factor)
-    			t = t.rehash();
-            end
-
-
         end
 
-
-        %This may have become obsolete.
         %Function to insert an element in the hash table. Returns the
         %updated tensor.
         function t = set(t,i,v)
@@ -163,7 +174,7 @@ classdef hacoo
             %}
             k = t.hash(m);
             
-            %this is temporary...
+            %b/c of MATLAB indexing...
             if k <= 0
                 k = 1;
             end
@@ -267,13 +278,13 @@ classdef hacoo
 		unfolding the tensor along mode n.
 
 		Parameters:
-			u - A list of numpy matrices, these correspond to the modes
+			u - A list of matrices, these correspond to the modes
 				in the tensor, other than n. If i is the dimension in
-				mode x, then u[x] must be an i x f matrix.
+				mode x, then u(x) must be an i x f matrix.
 			n - The mode along which the tensor is unfolded for the
 				product.
 		Returns:
-			A numpy matrix with dimensions i_n x f
+			A matrix with dimensions i_n x f
         %}
             
             % number of columns
@@ -283,7 +294,7 @@ classdef hacoo
 		    m = zeros(self.modes(n), fmax);
     
 		    % go through each column
-		    for f=1:fmax:
+		    for f=1:fmax
 			    % accumulation arrays
 			    z=0;
 			    t=[];
@@ -291,13 +302,13 @@ classdef hacoo
     
 			    % go through every non-zero
 			    for k=1:self.nbuckets
-				    if isempty(t.table{k}):
+				    if isempty(t.table{k})
 					    continue
                     end
 				    for entry=1:length(t.table{k})
 					    idx = mort.decode(entry(0), self.nmodes);
-					    t.append(entry(1))
-					    tind.append(idx(n)
+					    t.append(entry(1));
+					    tind.append(idx(n));
 					    z = length(t)-1;
     
 					    % multiply by the factor matrix entries
@@ -312,15 +323,15 @@ classdef hacoo
 						    % multiply the factor and advance to the next
 						    t(z) = b(idx(i), f) * t(z);
 						    i = i+1;
-                        
+                        end
                     end
+                end
 			    % accumulate m(:,f)
 			    for z =1:length(t)
 				    m(tind(z),f) = m(tind(z), f) + t(z);
                 end
    		     end
-		    return m;
-        
+		    %return m;
         end
 
         function write_tns(t,file)

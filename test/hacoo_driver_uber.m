@@ -1,7 +1,8 @@
 %Driver code for testing HaCOO class
 %working on this 8/26
 
-addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
+%addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
+addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 tic
 %file = 'uber.txt';
