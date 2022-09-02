@@ -35,7 +35,7 @@ classdef hacoo
                 NBUCKETS = power(2,ceil(log2(nnz/load_factor)));
 
             else
-                t.modes = 0;   %<-- EMPTY class constructor,no modes specified
+                t.modes = 0;   %<-- EMPTY class constructor
                 t.nmodes = 0;
                 NBUCKETS = 512;
             end
@@ -87,7 +87,8 @@ classdef hacoo
             for i = 1:size(idx,1)
                 k = keys(i);
                 v = vals(i);
-                si = summed_idx(i);
+                %si = summed_idx(i);
+                si = idx(i,:); %<-- changed to just store the tuple for now
                 
                  %check if any keys are equal to 0, due to matlab indexing
                     if k < 1
@@ -272,68 +273,67 @@ classdef hacoo
             fprintf("not implemented yet\n");
         end
 
-        function mttkrp(self,u,n)
-        %{
-		Carry out mttkrp between the tensor and an array of matrices,
-		unfolding the tensor along mode n.
-
-		Parameters:
-			u - A list of matrices, these correspond to the modes
-				in the tensor, other than n. If i is the dimension in
-				mode x, then u(x) must be an i x f matrix.
-			n - The mode along which the tensor is unfolded for the
-				product.
-		Returns:
-			A matrix with dimensions i_n x f
-        %}
-            
+        function mttkrp(T,u,n)
+            %{
+		    Carry out mttkrp between the tensor and an array of matrices,
+		    unfolding the tensor along mode n.
+    
+		    Parameters:
+			    u - A list of matrices, these correspond to the modes
+				    in the tensor, other than n. If i is the dimension in
+				    mode x, then u(x) must be an i x f matrix.
+			    n - The mode along which the tensor is unfolded for the
+				    product.
+		    Returns:
+			    A matrix with dimensions i_n x f
+            %}
 
             % number of columns
-		    fmax = size(u(1),2);
-    
-		    % create the result array
-		    m = zeros(self.modes(n), fmax);
-    
-		    % go through each column
-		    for f=1:fmax
-			    % accumulation arrays
-			    z=0;
-			    t=[];
-			    tind=[];
-    
-			    % go through every non-zero
-			    for k=1:self.nbuckets
-				    if isempty(self.table{k})
-					    continue
+            fmax = size(u,2);
+                
+            % create the result array
+            m = zeros(T.modes(n), fmax);
+                
+            % go through each column
+            for f=1:fmax
+                % accumulation arrays
+                z=1;
+                t=[];
+                tind=[];
+                
+                % go through every non-zero
+                for k=1:T.nbuckets
+                    if isempty(T.table{k})
+	                    continue
                     end
-				    for entry=1:length(self.table{k})
-					    idx = morton_decode(self.table{k}{entry}.morton, self.nmodes);
-					    t(end+1) = entry(1);
-					    tind(end+1) = idx(n);
-					    %z = length(t)-1;
-                        z = length(t)
-    
-					    % multiply by the factor matrix entries
-					    i=0;
-					    for b=1:size(u,2)
-						    % skip the unfolded mode
-						    if i==n
-							    i = i+1;
-							    continue
+                    for j=1:length(T.table{k})  %<-- loop over each entry in that bucket
+	                    %idx = morton_decode(T.table{k}{j}.morton, T.nmodes)
+                        idx = T.table{k}{j}.morton;
+	                    t(end+1) = T.table{k}{j}.value;
+	                    tind(end+1) = idx(n);
+                        z = length(t);
+                
+	                    % multiply by the factor matrix entries
+	                    i=1;
+	                    for q=1:size(u,2) %<-- for each matrix in u
+		                    % skip the unfolded mode
+		                    if i==n
+			                    i = i+1;
+			                    continue
                             end
-    
-						    % multiply the factor and advance to the next
-						    t(z) = b(idx(i), f) * t(z);
-						    i = i+1;
+                
+		                    % multiply the factor and advance to the next
+		                    t(z) = u{q}(idx(i), f) * t(z);
+		                    i = i+1;
                         end
                     end
                 end
-			    % accumulate m(:,f)
-			    for z =1:length(t)
-				    m(tind(z),f) = m(tind(z), f) + t(z);
+                % accumulate m(:,f)
+                for p=1:length(t)
+                    m(tind(p),f) = m(tind(p), f) + t(p);
                 end
-   		     end
-		    %return m;
+            end
+            %return m;
         end
 
         function write_tns(t,file)

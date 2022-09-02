@@ -1,5 +1,5 @@
-addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
-%addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
+%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
+addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
 modes = 3;
 
@@ -25,9 +25,9 @@ idx = [1,1,1;
         2,3,4];
 
 vals = [1;2;3;4;5;6;7;8;9;10;11;12];
-t = hacoo(idx,vals); %<--the tensor
+T = hacoo(idx,vals); %<--the tensor
 
-t.mttkrp(U,1) %<--matricize with respect to dimension 1.
+T.mttkrp(U,1) %<--matricize with respect to dimension 1.
 %t.mttkrp(U,2)
 %t.mttkrp(U,3)
 
