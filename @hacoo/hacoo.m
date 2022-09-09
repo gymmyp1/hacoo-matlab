@@ -24,10 +24,11 @@ classdef hacoo
             t.hash_curr_size = 0;
             t.load_factor = 0.6;
             
-            if (nargin == 2) %<-- input included subs and vals
+            if (nargin == 3) %<-- input params: subs, vals, modes
                 idx = varargin{1};
                 vals = varargin{2};
-                t.modes = max(idx);
+                %t.modes = max(idx);
+                t.modes = varargin{3};
                 t.nmodes = length(t.modes);
                
                 nnz = size(idx,1);
@@ -70,48 +71,66 @@ classdef hacoo
             %{
 		Set a list of subscripts and values in the sparse tensor hash table.
 		Parameters:
-			subs - List of nonzero subscripts
-            vals - List of nonzero tensor values
+			subs - Table of nonzero subscripts
+            vals - Table of nonzero tensor values
 		Returns:
 			A hacoo data type with a populated hash table.
             %}
 
-            summed_idx = cast(sum(idx,2),'int32');
-            summed_idx = summed_idx';
+            %Do all the processing to concatenate the indexes
+            idx = convertvars(idx, idx.Properties.VariableNames, 'string');
+
+            concat_idx = rowfun(@strcat, idx, 'SeparateInputs', false);
+            concat_idx = rowfun(@join, concat_idx);
+            concat_idx = rowfun(@rmspaces, concat_idx);
+            concat_idx = rowfun(@str2num, concat_idx);
+
+            vals = table2array(vals);
+            concat_idx = table2array(concat_idx);
+
+            %summed_idx = cast(sum(idx,2),'int32');
+            %summed_idx = summed_idx';
 
             % hash indexes for the hash keys
-            keys = arrayfun(@t.hash, summed_idx);
+            keys = arrayfun(@t.hash, concat_idx);
 
             %Set everything in the table
             prog = 0;
             for i = 1:size(idx,1)
                 k = keys(i);
                 v = vals(i);
-                %si = summed_idx(i);
-                si = idx(i,:); %<-- changed to just store the tuple for now
+                si = concat_idx(i);
+               
+                %check if any keys are equal to 0, due to matlab indexing
+                if k < 1
+                    k = 1;
+                end
                 
-                 %check if any keys are equal to 0, due to matlab indexing
-                    if k < 1
-                        k = 1;
+                % We already have the index and key, insert accordingly
+                if v ~= 0
+                    t.table{k}{end+1} = node(si, v);
+                    t.hash_curr_size = t.hash_curr_size + 1;
+                    depth = length(t.table{k});
+                    if depth > t.max_chain_depth
+                        t.max_chain_depth = depth;
                     end
-                    
-		            % We already have the index and key, insert accordingly
-                    if v ~= 0
-                        t.table{k}{end+1} = node(si, v);
-                        t.hash_curr_size = t.hash_curr_size + 1;
-                        depth = length(t.table{k});
-                        if depth > t.max_chain_depth
-                            t.max_chain_depth = depth;
-                        end
-                    else
-                        %remove entry in table
-                    end
+                else
+                    %remove entry in table
+                end
                 prog = prog + 1;
                 if mod(prog,10000) == 0
                     prog
                 end
             end
+
+            function res = rmspaces(idx)
+                res = strrep(idx,' ',''); %<-- remove spaces
+            end
+
         end
+
+        
+
 
         %Function to insert an element in the hash table. Returns the
         %updated tensor.
