@@ -1,4 +1,5 @@
-% HACOO class for sparse tensor storage.
+% HACOO class for sparse tensor storage. Uses original method of morton 
+% encoding as index id and for hashing.
 %
 %HACOO methods:
 
@@ -77,26 +78,21 @@ classdef hacoo
 			A hacoo data type with a populated hash table.
             %}
 
-            %Do all the processing to concatenate the indexes
-            idx = convertvars(idx, idx.Properties.VariableNames, 'string');
-
-            
-            concat_idx = rowfun(@cc, idx, 'SeparateInputs', false);
+            morton = rowfun(@morton_encode, idx)
+            idx = table2array(idx);
             vals = table2array(vals);
-            concat_idx = table2array(concat_idx);
-
-            %summed_idx = cast(sum(idx,2),'int32');
-            %summed_idx = summed_idx';
 
             % hash indexes for the hash keys
-            keys = arrayfun(@t.hash, concat_idx);
+            
+            %morton = arrayfun(@morton_encode, idx);
+            keys = arrayfun(@morton_encode, concat_idx);
 
             %Set everything in the table
             prog = 0;
             for i = 1:size(idx,1)
                 k = keys(i);
                 v = vals(i);
-                si = concat_idx(i);
+                si = morton(i); %index identifier in the node
                
                 %check if any keys are equal to 0, due to matlab indexing
                 if k < 1

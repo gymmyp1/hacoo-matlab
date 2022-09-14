@@ -12,10 +12,9 @@ table = readtable(file);
 idx = table(:,1:end-1);
 vals = table(:,end);
 
+%ubermodes = [183,24,1140,1717];
 modes = [5,5,5];
 
 t = hacoo(idx,vals,modes);
+t.display_tns();
 toc
-
-
-%ubermodes = [183;24;1140;1717];
