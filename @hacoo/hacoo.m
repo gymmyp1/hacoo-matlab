@@ -24,11 +24,11 @@ classdef hacoo
             t.hash_curr_size = 0;
             t.load_factor = 0.6;
             
-            if (nargin == 3) %<-- input params: subs, vals, modes
+            if (nargin == 2) %<-- input params: subs, vals
                 idx = varargin{1};
                 vals = varargin{2};
-                %t.modes = max(idx);
-                t.modes = varargin{3}; %need to fix where it automatically sets modes
+
+                t.modes =  max(idx{:,:});
                 t.nmodes = length(t.modes);
                
                 nnz = size(idx,1);
@@ -120,10 +120,7 @@ classdef hacoo
                 end
             end
 
-            function res = rmspaces(idx)
-                res = strrep(idx,' ',''); %<-- remove spaces
-            end
-
+            %concatenate index
             function res = cc(idx)
                 res = join(strcat(idx)); %<-- concatenate across columns
                 res = strrep(res,' ',''); %<-- remove spaces
@@ -132,7 +129,6 @@ classdef hacoo
             end
         end
 
-        
 
         %Function to insert an element in the hash table. Returns the
         %updated tensor.
@@ -184,17 +180,17 @@ classdef hacoo
         end
 
 
-        function [k,i] = search(t, m)
+        function [k,i] = search(t, c)
             %{
 		Search for a morton coded entry in the index hash.
 		Parameters:
-			m - The morton entry
+		    c - The concatenated index entry
 		Returns:
 			If m is found, it returns the (k, i) tuple where k is
 			  the bucket and i is the index in the chain
 			if m is not found, it returns (k, -1).
             %}
-            k = t.hash(m);
+            k = t.hash(c);
             
             %b/c of MATLAB indexing...
             if k <= 0
@@ -203,14 +199,14 @@ classdef hacoo
 
             %check if there are no entries in that bucket
             if isempty(t.table{k})
-                i = -1
+                i = -1;
                 return
             end
 
             %attempt to find item in that slot's chain
             for i = 1:length(t.table{k})
-                fprintf('searching within chain');
-                if t.table{k}{i}.morton == m
+                %fprintf('searching within chain\n');
+                if t.table{k}{i}.morton == c
                     return
                 end
             end
@@ -228,17 +224,27 @@ classdef hacoo
             item - the item if found, 0.0 if not found 
             %}
 
-            morton = morton_encode(i)
-            [k,j] = t.search(morton);
+
+            idx = cc(i);
+
+            [k,j] = t.search(idx);
 
             if j ~= -1
-                fprintf("item found");
+                %fprintf("item found");
                 item = t.table{k}{j};
                 return
             else
-                fprintf("item not found");
+                %fprintf("item not found");
                 item = 0.0;
                 return
+            end
+
+            %concatenate index
+            function res = cc(idx)
+                res = num2str(idx);
+                res = strrep(res,' ',''); %<-- remove spaces
+                res = str2num(res); %<-- convert to int 
+                concat_idx = uint16(res);
             end
         end
 
@@ -328,7 +334,6 @@ classdef hacoo
 	                    continue
                     end
                     for j=1:length(T.table{k})  %<-- loop over each entry in that bucket
-	                    %idx = morton_decode(T.table{k}{j}.morton, T.nmodes)
                         idx = T.table{k}{j}.morton;
 	                    t(end+1) = T.table{k}{j}.value;
 	                    tind(end+1) = idx(n);
@@ -355,6 +360,10 @@ classdef hacoo
                 end
             end
             %return m;
+        end
+
+        function innerproduct(X,Y)
+            %function not implemented yet
         end
 
         function write_tns(t,file)
