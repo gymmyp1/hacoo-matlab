@@ -16,5 +16,6 @@ t = hacoo(idx,vals);
 
 t.get([2,3,5])
 t.get([1,4,4])
+
 %t.display_tns();
 toc

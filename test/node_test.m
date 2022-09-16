@@ -1,6 +1,7 @@
 %Driver code for testing node class
 
-addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
+addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
+%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 nbuckets = 10;
 table = cell(nbuckets,1); %<-- create the cell table
