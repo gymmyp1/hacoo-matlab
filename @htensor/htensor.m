@@ -1,8 +1,9 @@
 % HACOO class for sparse tensor storage.
+% Working file 9/19
 %
 %HACOO methods:
 
-classdef hacoo
+classdef htensor
     properties
         table   %<-- hash table
         nbuckets  %<-- number of slots in hash table
@@ -19,7 +20,7 @@ classdef hacoo
     end
     methods
 
-        function t = hacoo(varargin) %<-- Class constructor
+        function t = htensor(varargin) %<-- Class constructor
             %HACOO Create a sparse tensor using HaCOO storage.
             %Expects input to be: table of subs, table of vals
             t.hash_curr_size = 0;
@@ -203,7 +204,7 @@ classdef hacoo
             %attempt to find item in that slot's chain
             for i = 1:length(t.table{k})
                 %fprintf('searching within chain\n');
-                if t.table{k}{i}.morton == c
+                if t.table{k}{i}.idx_id == c
                     return
                 end
             end
@@ -275,7 +276,7 @@ classdef hacoo
     				continue
                 end
     			for j = 1:length(old{i})
-    				k = t.hash(old{i}{j}.morton);
+    				k = t.hash(old{i}{j}.idx_id);
                     
                     if k <= 0
                         k = 1;
@@ -315,8 +316,8 @@ classdef hacoo
 
             for i = 1:t.nbuckets
                 for j = 1:length(t.table{i})
-                    if t.table{i}{j}.morton ~= -1
-                        fprintf(fileID,'%d %f %d\n',t.table{i}{j}.morton,t.table{i}{j}.value,i);
+                    if t.table{i}{j}.idx_id ~= -1
+                        fprintf(fileID,'%d %f %d\n',t.table{i}{j}.idx_id,t.table{i}{j}.value,i);
                     end
                 end
             end
@@ -330,7 +331,7 @@ classdef hacoo
             fprintf("Printing tensor...\n");
             for i = 1:t.nbuckets
                 for j = 1:length(t.table{i})
-                    if t.table{i}{j}.morton ~= -1
+                    if t.table{i}{j}.idx_id ~= -1
                         disp(t.table{i}{j});
                     end
                 end
