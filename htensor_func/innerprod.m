@@ -7,13 +7,6 @@ function innerprod(X,Y)
             error('X and Y must be the same size.');
     end
 
-    %loop over each mode
-    for r = 1:ndims(X)
-        for n = 1:size(X,r)
-            res = res + (X)
-        end
-    end
-
-    %loop over each nnz entry from 1 to the max index in that mode
+   
 
 end

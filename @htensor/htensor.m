@@ -26,26 +26,36 @@ classdef htensor
             t.hash_curr_size = 0;
             t.load_factor = 0.6;
             
+            if (nargin == 1) %<-- if we want to specify just modes
+                t.modes = varargin{1};
+                t.nmodes = length(t.modes);
+                NBUCKETS = 512;
+
+                % Initialize all hash table related things
+                t = hash_init(t,NBUCKETS);
+            end
+                
             if (nargin == 2) %<-- input params
                 idx = varargin{1};
                 vals = varargin{2};
 
-                t.modes =  max(idx{:,:});
+                %t.modes =  max(idx{:,:}); <-- if input is a table
+                t.modes = max(idx); %<-- if input is an array
                 t.nmodes = length(t.modes);
                
                 nnz = size(idx,1);
-                load_factor=0.6;
-                NBUCKETS = power(2,ceil(log2(nnz/load_factor)));
+                NBUCKETS = power(2,ceil(log2(nnz/t.load_factor)));
 
+                % Initialize all hash table related things
+                t = hash_init(t,NBUCKETS);
+                t = t.init_vals(idx,vals);
             else
                 t.modes = 0;   %<-- EMPTY class constructor
                 t.nmodes = 0;
                 NBUCKETS = 512;
+                % Initialize all hash table related things
+                t = hash_init(t,NBUCKETS);
             end
-
-            % Initialize all hash table related things
-            t = hash_init(t,NBUCKETS);
-            t = t.init_vals(idx,vals);
         end
 
         % Initialize all hash table related things
@@ -78,23 +88,32 @@ classdef htensor
 			A hacoo data type with a populated hash table.
             %}
 
+            %{
             %Do all the processing to concatenate the indexes
+            %Input- table of idx and table of vals
             idx = convertvars(idx, idx.Properties.VariableNames, 'string');
 
-            
             concat_idx = rowfun(@cc, idx, 'SeparateInputs', false);
             vals = table2array(vals);
             concat_idx = table2array(concat_idx);
 
             % hash indexes for the hash keys
             keys = arrayfun(@t.hash, concat_idx);
+            %}
+
+            summed_idx = cast(sum(idx,2),'int32');
+            summed_idx = summed_idx';
+
+            % hash indexes for the hash keys
+            keys = arrayfun(@t.hash, summed_idx);
 
             %Set everything in the table
             prog = 0;
             for i = 1:size(idx,1)
                 k = keys(i);
                 v = vals(i);
-                si = concat_idx(i);
+                si = idx(i,:); %<-- store the index tuple
+                %si = concat_idx(i);
                
                 %check if any keys are equal to 0, due to matlab indexing
                 if k < 1
@@ -118,6 +137,7 @@ classdef htensor
                 end
             end
 
+            %{
             %concatenate index
             function res = cc(idx)
                 res = join(strcat(idx)); %<-- concatenate across columns
@@ -125,13 +145,19 @@ classdef htensor
                 res = str2num(res); %<-- convert to int 
                 res = uint16(res);
             end
+            %}
         end
 
 
-        %Function to insert an element in the hash table. Returns the
-        %updated tensor.
+        %Function to insert a nonzero entry in the hash table. 
+        % Input-
+        %       t - The hacoo sparse tensor
+        %       i - The nonzero index array
+        %       v - The nonzero value
+        % Returns-
+        %       t - the updated tensor.
         function t = set(t,i,v)
-
+            %{
             % build the modes if we need
             if t.modes == 0
                 t.modes = zeros(length(i));
@@ -144,16 +170,15 @@ classdef htensor
                     t.modes(m) = i(m);
                 end
             end
+            %}
 
             % find the index
-    		morton_id = morton_encode(i); %actual id to search for index
-            morton = str2double(sprintf('%d', i)); %not really morton anymore, this is used for hashing
-    		[k, i] = t.search(morton);
+    		[k, i] = t.search(i);
 
     		% insert accordingly
     		if i == -1
     			if v ~= 0
-    				t.table{k}{end+1} = node(morton_id, v);
+    				t.table{k}{end+1} = node(i, v);
     				t.hash_curr_size = t.hash_curr_size + 1;
     				depth = length(t.table{k});
     				if depth > t.max_chain_depth
@@ -162,7 +187,7 @@ classdef htensor
                 end
             else
     			if v ~=0
-    				t.table{k}{i} = node(morton_id, v);
+    				t.table{k}{i} = node(idx_id, v);
                 else
     				t.remove_node(k,i);
                 end
@@ -178,24 +203,25 @@ classdef htensor
         end
 
 
-        function [k,i] = search(t, c)
+        function [k,i] = search(t, idx)
             %{
-		Search for a morton coded entry in the index hash.
+		Search for an index entry in hash table.
 		Parameters:
-		    c - The concatenated index entry
+		    s - The sparse tensor index array
 		Returns:
 			If m is found, it returns the (k, i) tuple where k is
 			  the bucket and i is the index in the chain
 			if m is not found, it returns (k, -1).
             %}
-            k = t.hash(c);
+            s = sum(idx);
+            k = t.hash(s);
             
             %b/c of MATLAB indexing...
             if k <= 0
                 k = 1;
             end
 
-            %check if there are no entries in that bucket
+            % Check if there are no entries in that bucket
             if isempty(t.table{k})
                 i = -1;
                 return
@@ -204,7 +230,7 @@ classdef htensor
             %attempt to find item in that slot's chain
             for i = 1:length(t.table{k})
                 %fprintf('searching within chain\n');
-                if t.table{k}{i}.idx_id == c
+                if isequal(t.table{k}{i}.idx_id,idx)
                     return
                 end
             end
@@ -222,10 +248,7 @@ classdef htensor
             item - the item if found, 0.0 if not found 
             %}
 
-
-            idx = cc(i);
-
-            [k,j] = t.search(idx);
+            [k,j] = t.search(i);
 
             if j ~= -1
                 %fprintf("item found");
@@ -237,6 +260,7 @@ classdef htensor
                 return
             end
 
+            %{
             %concatenate index
             function res = cc(idx)
                 res = num2str(idx);
@@ -244,6 +268,7 @@ classdef htensor
                 res = str2num(res); %<-- convert to int 
                 concat_idx = uint16(res);
             end
+            %}
         end
 
         function k = hash(t, m)
@@ -252,7 +277,7 @@ classdef htensor
 
 		Parameters:
             t - The sparse tensor
-			m - The morton code to hash
+			m - Summed index integer
 
 		Returns:
 			key
@@ -263,32 +288,24 @@ classdef htensor
             hash = hash + (bitshift(hash,t.sz)); %bit shift to the left
             k = mod(hash,t.nbuckets);
         end
-
-        function t = rehash(t)
+    
+        % Rehash existing entries in tensor to a new tensor of a different
+        % size.
+        % Parameters:
+        %       t - HaCOO tensor
+        % Returns:
+        %       r - new HaCOO tensor with rehashed entries
+        function r = rehash(t)
             fprintf("Rehashing...\n");
             old = t.table;
 
-            t = t.hash_init(t.nbuckets*2); %<-- double the number of buckets
-            %t.nbuckets
-            % reinsert everything into the hash index
-    		for i = 1:length(old)
-    			if isempty(old{i})
-    				continue
-                end
-    			for j = 1:length(old{i})
-    				k = t.hash(old{i}{j}.idx_id);
-                    
-                    if k <= 0
-                        k = 1;
-                    end
-                    
-    				t.table{k}{end+1} = old{i}{j};
-    				depth = length(t.table{k});
-    				if depth > t.max_chain_depth
-    					t.max_chain_depth = depth;
-                    end
-                end
-            end
+            r = r.hash_init(r.nbuckets*2); %<-- double the number of buckets
+
+            %needs to be revised.
+            %gather all subscripts and vals into arrays
+            % hash using new tensor parameters
+            %return new tensor
+
             fprintf("done rehashing\n");
         end
 
@@ -296,11 +313,6 @@ classdef htensor
             %need to find the element to remove, then slide back all data after that
             % and resize the cell array
             fprintf("not implemented yet\n");
-        end
-
-        function m = size(X)
-            %Returns tensor X's modes.
-            m = X.modes;
         end
 
         function write_tns(t,file)
@@ -328,10 +340,13 @@ classdef htensor
 
         % Function to print all nonzero elements stored in the tensor.
         function display_tns(t)
-            fprintf("Printing tensor...\n");
+            fprintf("Printing tensor nonzeros...\n");
             for i = 1:t.nbuckets
-                for j = 1:length(t.table{i})
-                    if t.table{i}{j}.idx_id ~= -1
+                %skip empty buckets
+                if isempty(t.table{i})
+                    continue
+                else
+                    for j = 1:length(t.table{i})
                         disp(t.table{i}{j});
                     end
                 end
