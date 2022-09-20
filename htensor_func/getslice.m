@@ -34,8 +34,6 @@ function res = getslice(t, slice)
         new_modes(i) = max(resModes{i});
     end
     
-    new_modes
-    
     % Create a new result tensor
     res = htensor(new_modes);
     res.modes
@@ -50,10 +48,11 @@ function res = getslice(t, slice)
             for j = 1:length(t.table{i})
                 %if we find a valid index in the slice, copy it to the tensor
                 if in_slice(t.table{i}{j}.idx_id,resModes) == 0
-                    fprintf("subscript not in slice\n");
+                    %fprintf("subscript not in slice\n");
+                    continue
                 else
-                    fprintf("can copy this index over...\n");
-                    t.table{i}{j}.idx_id
+                    %fprintf("can copy this index over...\n");
+                    %t.table{i}{j}.idx_id
                     res = res.set(t.table{i}{j}.idx_id, t.table{i}{j}.value);
                 end
             end

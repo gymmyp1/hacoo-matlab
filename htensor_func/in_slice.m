@@ -10,11 +10,13 @@ function copy = in_slice(idx, slice)
     %check if whole subscript is in the slice
     for i = 1:length(slice)
         if ismember(idx(i),slice{i})
-            %fprintf("valid subscript\n");
+            continue
         else
             copy = 0; %<-- don't copy this 
-            fprintf("invalid subscript\n");
+            %fprintf("invalid subscript\n");
             return
         end
     end
+
+    %fprintf("valid subscript\n");
 end

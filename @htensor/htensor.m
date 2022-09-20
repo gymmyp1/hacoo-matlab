@@ -22,39 +22,45 @@ classdef htensor
 
         function t = htensor(varargin) %<-- Class constructor
             %HACOO Create a sparse tensor using HaCOO storage.
-            %Expects input to be: table of subs, table of vals
+            %Parameters:
+            %       modes - array of tensor modes
+            % OR
+            %       subs - array of nonzero tensor subscripts
+            %       vals - array of nonzero values
             t.hash_curr_size = 0;
             t.load_factor = 0.6;
             
-            if (nargin == 1) %<-- if we want to specify just modes
-                t.modes = varargin{1};
-                t.nmodes = length(t.modes);
-                NBUCKETS = 512;
-
-                % Initialize all hash table related things
-                t = hash_init(t,NBUCKETS);
-            end
+            switch nargin
+                case 1 %<-- if we want to specify just modes
+                    %fprintf('creating hacoo tensor with just modes initialized\n')
+                    t.modes = varargin{1};
+                    t.nmodes = length(t.modes);
+                    NBUCKETS = 512;
+    
+                    % Initialize all hash table related things
+                    t = hash_init(t,NBUCKETS);
                 
-            if (nargin == 2) %<-- input params
-                idx = varargin{1};
-                vals = varargin{2};
-
-                %t.modes =  max(idx{:,:}); <-- if input is a table
-                t.modes = max(idx); %<-- if input is an array
-                t.nmodes = length(t.modes);
-               
-                nnz = size(idx,1);
-                NBUCKETS = power(2,ceil(log2(nnz/t.load_factor)));
-
-                % Initialize all hash table related things
-                t = hash_init(t,NBUCKETS);
-                t = t.init_vals(idx,vals);
-            else
-                t.modes = 0;   %<-- EMPTY class constructor
-                t.nmodes = 0;
-                NBUCKETS = 512;
-                % Initialize all hash table related things
-                t = hash_init(t,NBUCKETS);
+                case 2 %<-- subs and vals specified
+                    %fprintf('creating hacoo tensor with subs and vals initialized\n')
+                    idx = varargin{1};
+                    vals = varargin{2};
+    
+                    %t.modes =  max(idx{:,:}); <-- if input is a table
+                    t.modes = max(idx); %<-- if input is an array
+                    t.nmodes = length(t.modes);
+                   
+                    nnz = size(idx,1);
+                    NBUCKETS = power(2,ceil(log2(nnz/t.load_factor)));
+    
+                    % Initialize all hash table related things
+                    t = hash_init(t,NBUCKETS);
+                    t = t.init_vals(idx,vals);
+                otherwise
+                    t.modes = 0;   %<-- EMPTY class constructor
+                    t.nmodes = 0;
+                    NBUCKETS = 512;
+                    % Initialize all hash table related things
+                    t = hash_init(t,NBUCKETS);
             end
         end
 
@@ -152,11 +158,11 @@ classdef htensor
         %Function to insert a nonzero entry in the hash table. 
         % Input-
         %       t - The hacoo sparse tensor
-        %       i - The nonzero index array
+        %       idx - The nonzero index array
         %       v - The nonzero value
         % Returns-
         %       t - the updated tensor.
-        function t = set(t,i,v)
+        function t = set(t,idx,v)
             %{
             % build the modes if we need
             if t.modes == 0
@@ -173,12 +179,12 @@ classdef htensor
             %}
 
             % find the index
-    		[k, i] = t.search(i);
+    		[k, i] = t.search(idx);
 
     		% insert accordingly
     		if i == -1
     			if v ~= 0
-    				t.table{k}{end+1} = node(i, v);
+    				t.table{k}{end+1} = node(idx, v);
     				t.hash_curr_size = t.hash_curr_size + 1;
     				depth = length(t.table{k});
     				if depth > t.max_chain_depth
@@ -187,9 +193,9 @@ classdef htensor
                 end
             else
     			if v ~=0
-    				t.table{k}{i} = node(idx_id, v);
+    				t.table{k}{i} = node(idx, v);
                 else
-    				t.remove_node(k,i);
+    				t.remove_node(k,idx);
                 end
             end
 
