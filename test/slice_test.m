@@ -12,7 +12,8 @@ vals = table2array(vals);
 
 t = htensor(idx,vals);
 
-slice = '[:,:,5]'; %<-- for now this needs to be a string o.w. matlab fusses
-r = getslice(t,slice)
+r1 = getslice(t,'[:,:,5]');
+r2 = getslice(t,'[:,1,:]');
 
-r.display_tns()
+%r.display_tns();
+r2.display_tns()
