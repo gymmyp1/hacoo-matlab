@@ -15,19 +15,27 @@ function M = cp_als(X,R)
     % Observe that we don't need to calculate an initial guess for the
     % first index in dimorder because that will be solved for in the first
     % inner iteration.
+
     N = ndims(X);
-    normX = norm(X);
+    normX = tns_norm(X);
 
     Uinit = cell(N,1);
-    for n = dimorder(2:end)
-        Uinit{n} = rand(size(X,n),R);
+    for n = 2:N
+        Uinit{n} = rand(X.modes(n),R);
     end
 
+%% Set up for iterations - initializing U and the fit.
+U = Uinit;
+fit = 0;
+
+% Store the last MTTKRP result to accelerate fitness computation.
+U_mttkrp = zeros(size(X, dimorder(end)), R); %what's dimorder???
+
     for n = 1:N
-         U{n} = Unew;
+         U{n} = 
          UtU(:,:,n) = U{n}'*U{n};
 
-        A(n) = mttkrp(X,U,n) * V.T
+        %A(n) = mttkrp(X,U,n) * UtU
         %normalize columns of A_(n)
     end
 

@@ -213,10 +213,10 @@ classdef htensor
             %{
 		Search for an index entry in hash table.
 		Parameters:
-		    s - The sparse tensor index array
+		    idx - The nonzero index to search for
 		Returns:
 			If m is found, it returns the (k, i) tuple where k is
-			  the bucket and i is the index in the chain
+			  the bucket and i is its location in the chain
 			if m is not found, it returns (k, -1).
             %}
             s = sum(idx);
@@ -301,48 +301,73 @@ classdef htensor
         %       t - HaCOO tensor
         % Returns:
         %       r - new HaCOO tensor with rehashed entries
-        function r = rehash(t)
+        function new = rehash(t)
             fprintf("Rehashing...\n");
-            old = t.table;
 
-            r = r.hash_init(r.nbuckets*2); %<-- double the number of buckets
+            %gather all existing subscripts and vals into arrays
+            indexes = t.get_indexes();
+            vals = t.get_vals();
 
-            %needs to be revised.
-            %gather all subscripts and vals into arrays
-            % hash using new tensor parameters
-            %return new tensor
+            %Create new tensor, constructor will fill new values into table
+            new = htensor(indexes,vals);
 
             fprintf("done rehashing\n");
         end
 
-        function t = remove_node(t,k,i)
-            %need to find the element to remove, then slide back all data after that
-            % and resize the cell array
-            fprintf("not implemented yet\n");
+        % Remove a nonzero entry.
+        % Parameters:
+        %       t - A HaCOO htensor
+        %       i - the index entry to remove
+        % Returns:
+        %       utns - the updated HaCOO tensor
+        %
+        function utns = remove_node(t,i)
+            [k,chain_idx] = t.search(i);
+
+            if chain_idx ~= -1 %<-- we located the index successfully
+                t.table{k}{chain_idx} = [];
+                %remove the leftover blank array
+                t.table{k}{chain_idx}(~cellfun('isempty',t.table{k}{chain_idx}));
+                utns = t; %<-- this is not the most efficient...
+            else
+                fprintf("Could not remove index.\n");
+                return
+            end
         end
 
-        function write_tns(t,file)
-            %{
-                Write a sparse tensor to a file using HaCOO file format:
-            
-                Format: morton_id value hash_key
-                (subsequent entries w/ same hash key belong in corresponding order in the
-                chain)
-            %}
-            fprintf("Writing tensor...\n");
-            fileID = fopen(file,'w');
-
+        %Returns array res containing all nnz index subscripts
+        % in the HaCOO sparse tensor t.
+        function res = get_indexes(t)
+            res = []; %preallocate matrix?
             for i = 1:t.nbuckets
-                for j = 1:length(t.table{i})
-                    if t.table{i}{j}.idx_id ~= -1
-                        fprintf(fileID,'%d %f %d\n',t.table{i}{j}.idx_id,t.table{i}{j}.value,i);
+                if isempty(t.table{i})  %<-- skip bucket if empty
+                    continue
+                else
+                    for j = 1:length(t.table{i})
+                        %Concatenate the index array into result array
+                        res = vertcat(res, t.table{i}{j}.idx_id);
                     end
                 end
             end
-            fclose(fileID);
-            fprintf("Finished.\n");
         end
 
+
+        %Returns an array v containing all nonzeroes in the sparse tensor.
+        function v = get_vals(t)
+            v = zeros(1,t.hash_curr_size);  %<-- preallocate array
+            vi = 1; %<-- counter
+            for i = 1:t.nbuckets
+                if isempty(t.table{i})  %<-- skip bucket if empty
+                    continue
+                else
+                    for j = 1:length(t.table{i})
+                        %Append all the nonzeroes into an array
+                        v(vi) = t.table{i}{j}.value;
+                        vi = vi+1;
+                    end
+                end
+            end
+        end
 
         % Function to print all nonzero elements stored in the tensor.
         function display_tns(t)
