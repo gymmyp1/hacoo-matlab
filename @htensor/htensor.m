@@ -338,14 +338,16 @@ classdef htensor
         %Returns array res containing all nnz index subscripts
         % in the HaCOO sparse tensor t.
         function res = get_indexes(t)
-            res = []; %preallocate matrix?
+            res = zeros(t.hash_curr_size,t.nmodes); %<-- preallocate matrix
+            ri = 1; %<-- counter
             for i = 1:t.nbuckets
                 if isempty(t.table{i})  %<-- skip bucket if empty
                     continue
                 else
                     for j = 1:length(t.table{i})
                         %Concatenate the index array into result array
-                        res = vertcat(res, t.table{i}{j}.idx_id);
+                        res(ri,:) = t.table{i}{j}.idx_id;
+                        ri = ri + 1;
                     end
                 end
             end

@@ -27,7 +27,7 @@ idx = [1,1,1;
 vals = [1;2;3;4;5;6;7;8;9;10;11;12];
 T = hacoo(idx,vals); %<--the tensor
 
-T.mttkrp(U,1) %<--matricize with respect to dimension 1.
-%t.mttkrp(U,2)
-%t.mttkrp(U,3)
+mttkrp(T,U,1) %<--matricize with respect to dimension 1.
+mttkrp(T,U,2)
+mttkrp(T,U,3)
 
