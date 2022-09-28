@@ -11,4 +11,5 @@ t = read_tns('x.txt');
 
 %t.display_tns();
 t.get_indexes()
+
 toc

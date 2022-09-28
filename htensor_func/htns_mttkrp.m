@@ -9,10 +9,10 @@ Parameters:
     n - The mode along which the tensor is unfolded for the
 	    product.
 Returns:
-    A matrix with dimensions i_n x f
+    m - Result matrix with dimensions i_n x f
 %}
 
-function mttkrp(T,u,n)
+function m = mttkrp(T,u,n)
 
 % number of columns
 fmax = size(u,2);
@@ -33,7 +33,7 @@ for f=1:fmax
             continue
         end
         for j=1:length(T.table{k})  %<-- loop over each entry in that bucket
-            idx = T.table{k}{j}.morton;
+            idx = T.table{k}{j}.idx_id;
             t(end+1) = T.table{k}{j}.value;
             tind(end+1) = idx(n);
             z = length(t);

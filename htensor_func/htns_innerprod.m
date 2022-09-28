@@ -7,6 +7,7 @@ function innerprod(X,Y)
             error('X and Y must be the same size.');
     end
 
+    %For each mode 
    
 
 end

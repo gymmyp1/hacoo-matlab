@@ -11,23 +11,9 @@ U{1} = a;
 U{2} = b;
 U{3} = c;
 
-idx = [1,1,1;
-        1,2,1;
-        1,3,1;
-        2,1,1;
-        2,2,1;
-        2,3,1;
-        1,1,2;
-        1,2,2;
-        1,3,2;
-        2,1,2;
-        2,2,3;
-        2,3,4];
+file = 'x.txt';
+T = read_tns(file); %<--the tensor
 
-vals = [1;2;3;4;5;6;7;8;9;10;11;12];
-T = hacoo(idx,vals); %<--the tensor
-
-mttkrp(T,U,1) %<--matricize with respect to dimension 1.
-mttkrp(T,U,2)
-mttkrp(T,U,3)
-
+m1 = htns_mttkrp(T,U,1) %<--matricize with respect to dimension 1.
+m2 = htns_mttkrp(T,U,2)
+m3 = htns_mttkrp(T,U,3)

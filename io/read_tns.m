@@ -10,10 +10,10 @@
 
 function t = read_tns(file)
     table = readtable(file);
-    table = table2array(table);
+    arr = table2array(table);
     
-    idx = table(:,1:end-1);
-    vals = table(:,end);
+    idx = arr(:,1:end-1);
+    vals = arr(:,end);
     
     t = htensor(idx,vals);
 end

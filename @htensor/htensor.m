@@ -29,29 +29,29 @@ classdef htensor
             %       vals - array of nonzero values
             t.hash_curr_size = 0;
             t.load_factor = 0.6;
-            
+
             switch nargin
                 case 1 %<-- if we want to specify just modes
                     %fprintf('creating hacoo tensor with just modes initialized\n')
                     t.modes = varargin{1};
                     t.nmodes = length(t.modes);
                     NBUCKETS = 512;
-    
+
                     % Initialize all hash table related things
                     t = hash_init(t,NBUCKETS);
-                
+
                 case 2 %<-- subs and vals specified
                     %fprintf('creating hacoo tensor with subs and vals initialized\n')
                     idx = varargin{1};
                     vals = varargin{2};
-    
+
                     %t.modes =  max(idx{:,:}); <-- if input is a table
                     t.modes = max(idx); %<-- if input is an array
                     t.nmodes = length(t.modes);
-                   
+
                     nnz = size(idx,1);
                     NBUCKETS = power(2,ceil(log2(nnz/t.load_factor)));
-    
+
                     % Initialize all hash table related things
                     t = hash_init(t,NBUCKETS);
                     t = t.init_vals(idx,vals);
@@ -120,12 +120,12 @@ classdef htensor
                 v = vals(i);
                 si = idx(i,:); %<-- store the index tuple
                 %si = concat_idx(i);
-               
+
                 %check if any keys are equal to 0, due to matlab indexing
                 if k < 1
                     k = 1;
                 end
-                
+
                 % We already have the index and key, insert accordingly
                 if v ~= 0
                     t.table{k}{end+1} = node(si, v);
@@ -138,7 +138,7 @@ classdef htensor
                     %remove entry in table
                 end
                 prog = prog + 1;
-                if mod(prog,10000) == 0
+                if mod(prog,1000000) == 0
                     prog
                 end
             end
@@ -155,7 +155,7 @@ classdef htensor
         end
 
 
-        %Function to insert a nonzero entry in the hash table. 
+        %Function to insert a nonzero entry in the hash table.
         % Input-
         %       t - The hacoo sparse tensor
         %       idx - The nonzero index array
@@ -179,33 +179,33 @@ classdef htensor
             %}
 
             % find the index
-    		[k, i] = t.search(idx);
+            [k, i] = t.search(idx);
 
-    		% insert accordingly
-    		if i == -1
-    			if v ~= 0
-    				t.table{k}{end+1} = node(idx, v);
-    				t.hash_curr_size = t.hash_curr_size + 1;
-    				depth = length(t.table{k});
-    				if depth > t.max_chain_depth
-    					t.max_chain_depth = depth;
+            % insert accordingly
+            if i == -1
+                if v ~= 0
+                    t.table{k}{end+1} = node(idx, v);
+                    t.hash_curr_size = t.hash_curr_size + 1;
+                    depth = length(t.table{k});
+                    if depth > t.max_chain_depth
+                        t.max_chain_depth = depth;
                     end
                 end
             else
-    			if v ~=0
-    				t.table{k}{i} = node(idx, v);
+                if v ~=0
+                    t.table{k}{i} = node(idx, v);
                 else
-    				t.remove_node(k,idx);
+                    t.remove_node(k,idx);
                 end
             end
 
             %fprintf("index set\n");
-            
-    		% Check if we need to rehash
-    		if((t.hash_curr_size/t.nbuckets) > t.load_factor)
-    			t = t.rehash();
+
+            % Check if we need to rehash
+            if((t.hash_curr_size/t.nbuckets) > t.load_factor)
+                t = t.rehash();
             end
-            
+
         end
 
 
@@ -221,7 +221,7 @@ classdef htensor
             %}
             s = sum(idx);
             k = t.hash(s);
-            
+
             %b/c of MATLAB indexing...
             if k <= 0
                 k = 1;
@@ -294,7 +294,7 @@ classdef htensor
             hash = hash + (bitshift(hash,t.sz)); %bit shift to the left
             k = mod(hash,t.nbuckets);
         end
-    
+
         % Rehash existing entries in tensor to a new tensor of a different
         % size.
         % Parameters:

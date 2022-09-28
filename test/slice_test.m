@@ -12,8 +12,8 @@ vals = table2array(vals);
 
 t = htensor(idx,vals);
 
-r1 = getslice(t,'[:,:,5]');
-r2 = getslice(t,'[:,1,:]');
+r1 = htns_getslice(t,'[:,:,5]');
+r2 = htns_getslice(t,'[:,1,:]');
 
 %r.display_tns();
 r2.display_tns()
