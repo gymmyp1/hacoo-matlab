@@ -1,56 +1,18 @@
-function [P,Uinit,output] = htns_cp_als(X,R,varargin)
-% This function has been adapted to work with a HaCOO, or htensor.
-%
-%CP_ALS Compute a CP decomposition of any type of tensor.
-%
-%   M = CP_ALS(X,R) computes an estimate of the best rank-R
-%   CP model of a tensor X using an alternating least-squares
-%   algorithm.  The input X can be a tensor, sptensor, ktensor, or
-%   ttensor. The result M is a ktensor.
-%
-%   M = CP_ALS(X,R,'param',value,...) specifies optional parameters and
-%   values. Valid parameters and their default values are:
-%      'tol' - Tolerance on difference in fit {1.0e-4}
-%      'maxiters' - Maximum number of iterations {50}
-%      'dimorder' - Order to loop through dimensions {1:ndims(A)}
-%      'init' - Initial guess [{'random'}|'nvecs'|cell array]
-%      'printitn' - Print fit every n iterations; 0 for no printing {1}
-%      'fixsigns' - Call fixsigns at end of iterations {true}
-%
-%   [M,U0] = CP_ALS(...) also returns the initial guess.
-%
-%   [M,U0,out] = CP_ALS(...) also returns additional output that contains
-%   the input parameters.
-%
-%   Note: The "fit" is defined as 1 - norm(X-full(M))/norm(X) and is
-%   loosely the proportion of the data described by the CP model, i.e., a
-%   fit of 1 is perfect.
-%
-%   NOTE: Updated in various minor ways per work of Phan Anh Huy. See Anh
-%   Huy Phan, Petr Tichavský, Andrzej Cichocki, On Fast Computation of
-%   Gradients for CANDECOMP/PARAFAC Algorithms, arXiv:1204.1586, 2012.
-%
-%   Examples:
-%   X = sptenrand([5 4 3], 10);
-%   M = cp_als(X,2);
-%   M = cp_als(X,2,'dimorder',[3 2 1]);
-%   M = cp_als(X,2,'dimorder',[3 2 1],'init','nvecs');
-%   U0 = {rand(5,2),rand(4,2),[]}; %<-- Initial guess for factors of M
-%   [M,U0,out] = cp_als(X,2,'dimorder',[3 2 1],'init',U0);
-%   M = cp_als(X,2,out.params); %<-- Same params as previous run
-%
-%   <a href="matlab:web(strcat('file://',fullfile(getfield(what('tensor_toolbox'),'path'),'doc','html','cp_als_doc.html')))">Documentation page for CP-ALS</a>
-%
-%   See also KTENSOR, TENSOR, SPTENSOR, TTENSOR.
-%
-%Tensor Toolbox for MATLAB: <a href="https://www.tensortoolbox.org">www.tensortoolbox.org</a>
+%Driver code for testing cp_als function.
 
+addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
+%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
+file = 'x.txt';
+%file = 'uber_trim.txt';
+X = read_tns(file);
+R = 50;
 
 %% Extract number of dimensions and norm of X.
 N = X.nmodes;
 normX = htns_norm(X); %changed to htensor's norm function
 
+%{
 %% Set algorithm parameters from input or by using defaults
 params = inputParser;
 params.addParameter('tol',1e-4,@isscalar);
@@ -59,14 +21,14 @@ params.addParameter('dimorder',1:N,@(x) isequal(sort(x),1:N));
 params.addParameter('init', 'random', @(x) (iscell(x) || ismember(x,{'random','nvecs'})));
 params.addParameter('printitn',1,@isscalar);
 params.addParameter('fixsigns',true,@islogical);
-params.parse(varargin{:});
+%}
 
 %% Copy from params object
-fitchangetol = params.Results.tol;
-maxiters = params.Results.maxiters;
-dimorder = params.Results.dimorder;
-init = params.Results.init;
-printitn = params.Results.printitn;
+fitchangetol = 1e-4;
+maxiters = 50;
+dimorder = 1:N;
+init = 'random';
+printitn = 1;
 
 %% Error checking 
 
@@ -88,9 +50,9 @@ else
     if strcmp(init,'random')
         Uinit = cell(N,1);
         for n = dimorder(2:end)
-            Uinit{n} = rand(htns_size(X,n),n);
+            Uinit{n} = rand(htns_size(X,n),R);
         end
-    elseif strcmp(init,'nvecs') || strcmp(init,'eigs') %this has been left alone...
+    elseif strcmp(init,'nvecs') || strcmp(init,'eigs') 
         Uinit = cell(N,1);
         for n = dimorder(2:end)
             Uinit{n} = nvecs(X,n,R);
@@ -106,10 +68,6 @@ fit = 0;
 
 % Store the last MTTKRP result to accelerate fitness computation.
 U_mttkrp = zeros(htns_size(X, dimorder(end)), R);
-
-for n = 1:T.nmodes
-    U_mttkrp{n} = zeros(T.modes(n), fmax); %<--matricize with respect to dimension n.
-end
 
 if printitn>0
   fprintf('\nCP_ALS:\n');
@@ -141,6 +99,7 @@ else
             
             % Calculate Unew = X_(n) * khatrirao(all U except n, 'r').
             Unew = htns_mttkrp(X,U,n); %changed to HaCOO specific mttkrp
+            size(Unew)
             % Save the last MTTKRP result for fitness check.
             if n == dimorder(end)
               U_mttkrp = Unew;
@@ -148,6 +107,8 @@ else
             
             % Compute the matrix of coefficients for linear system
             Y = prod(UtU(:,:,[1:n-1 n+1:N]),3);
+            size(Y)
+            %size(Unew)
             Unew = Unew / Y;
             if issparse(Unew)
                 Unew = full(Unew);   % for the case R=1
@@ -215,7 +176,3 @@ if printitn>0
     end
   fprintf(' Final f = %e \n', fit);
 end
-
-output = struct;
-output.params = params.Results;
-output.iters = iter;

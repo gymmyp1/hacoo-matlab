@@ -1,7 +1,7 @@
 %Driver code for testing cp_als function.
 
-%addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
-addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
+addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
+%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 file = 'x.txt';
 %file = 'uber_trim.txt';

@@ -1,5 +1,7 @@
+%This is an old file, concatenation has been replaced by summing
+%the index for hashing b/c this was too slow.
+
 %Driver code for testing HaCOO class
-%working on this 9/9
 %Goal: figure out vecotrized way to concatenate all indexes 
 % across columns
 

@@ -1,4 +1,4 @@
-function res = getslice(t, slice)
+function res = htns_getslice(t, slice)
 
     resModes = cell(t.nmodes,1);
    

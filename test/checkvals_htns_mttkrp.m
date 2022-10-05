@@ -1,21 +1,19 @@
-%{
-Carry out mttkrp between the tensor and an array of matrices,
-unfolding the tensor along mode n.
+%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
+addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
-Parameters:
-    u - A list of matrices, these correspond to the modes
-	    in the tensor, other than n. If i is the dimension in
-	    mode x, then u(x) must be an i x f matrix.
-    n - The mode along which the tensor is unfolded for the
-	    product.
-Returns:
-    m - Result matrix with dimensions i_n x f
-%}
+file = 'x.txt';
+T = read_tns(file); %<--the tensor
 
-function m = htns_mttkrp(T,u,n)
+N = T.nmodes;
+Uinit = cell(N,1);
+for n = dimorder(2:end)
+    Uinit{n} = rand(htns_size(T,n),R);
+end
+
+u = Uinit;
 
 % number of columns
-fmax = size(u{1},2);
+fmax = size(u,2);
     
 % create the result array
 m = zeros(T.modes(n), fmax);
@@ -40,7 +38,7 @@ for f=1:fmax
     
             % multiply by the factor matrix entries
             i=1;
-            for q=1:size(u,1) %<-- for each matrix in u
+            for q=1:size(u,2) %<-- for each matrix in u
                 % skip the unfolded mode
                 if i==n
                     i = i+1;
@@ -59,5 +57,3 @@ for f=1:fmax
     end
 end
 %return m;
-
-end %<-- end function
