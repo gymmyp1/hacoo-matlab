@@ -18,7 +18,7 @@ X = sptensor(idx,vals);
 %set up tensor Y
 
 %tensor toolbox's version
-a2 = innerprod(X,X)
+%a2 = innerprod(X,X)
 
 %my version
 a1 = htns_innerprod(T,X)

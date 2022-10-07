@@ -1,5 +1,5 @@
 %R = INNERPROD(X,Y) computes the inner product between
-%   HaCOO sparse tensor X and tensor Y.
+%   HaCOO sparse tensor X and tensor Y (tensors supported by Tensor Toolbox).
 
 function res = htns_innerprod(X,Y)
     % check if X and Y are same size
@@ -17,10 +17,9 @@ function res = htns_innerprod(X,Y)
         VY = extract(Y,SX);   %<-----VY = Y(SX);
     else
         [SY,VY] = find(Y);
-        VX = extract(X,SY);   %<-----VX = X(SY);
+        VX = htns_extract(X,SY);   %<-----VX = X(SY);
     end
     res = VY'*VX;
     return;
-   
 
 end

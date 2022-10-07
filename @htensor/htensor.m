@@ -276,6 +276,27 @@ classdef htensor
             end
             %}
         end
+    
+
+        function v = extract_val(t,idx)
+            %{
+		Retrieve the value of tensor index. 
+		Parameters:
+			t - The tensor
+            i - The tensor index
+		Returns:
+            v - the tensor index's value, 0.0 if not found
+            %}
+            [k,j] = t.search(idx);
+
+            if j ~= -1
+                v = t.table{k}{j}.value;
+                return
+            else
+                v = 0.0;
+                return
+            end
+        end
 
         function k = hash(t, m)
             %{
@@ -305,8 +326,8 @@ classdef htensor
             fprintf("Rehashing...\n");
 
             %gather all existing subscripts and vals into arrays
-            indexes = t.get_indexes();
-            vals = t.get_vals();
+            indexes = t.all_indexes();
+            vals = t.all_vals();
 
             %Create new tensor, constructor will fill new values into table
             new = htensor(indexes,vals);
@@ -337,7 +358,7 @@ classdef htensor
 
         %Returns array res containing all nnz index subscripts
         % in the HaCOO sparse tensor t.
-        function res = get_indexes(t)
+        function res = all_indexes(t)
             res = zeros(t.hash_curr_size,t.nmodes); %<-- preallocate matrix
             ri = 1; %<-- counter
             for i = 1:t.nbuckets
@@ -355,7 +376,7 @@ classdef htensor
 
 
         %Returns an array v containing all nonzeroes in the sparse tensor.
-        function v = get_vals(t)
+        function v = all_vals(t)
             v = zeros(1,t.hash_curr_size);  %<-- preallocate array
             vi = 1; %<-- counter
             for i = 1:t.nbuckets

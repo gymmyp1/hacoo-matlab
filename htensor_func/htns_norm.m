@@ -8,6 +8,6 @@
 %
 
 %need to check if this is correct
-function res = tns_norm(t)
-    res = norm(t.get_vals()); %<-- Apply norm to all nnz vals
+function res = htns_norm(t)
+    res = norm(t.all_vals()); %<-- Apply norm to all nnz vals
 end
