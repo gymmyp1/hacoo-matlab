@@ -14,7 +14,7 @@ U{3} = c;
 %}
 
 file = 'y.txt';
-T = read_tns(file); %<--HaCOO htensor
+T = read_htns(file); %<--HaCOO htensor
 
 %set up Tensor Toolbox sptensor
 table = readtable(file);

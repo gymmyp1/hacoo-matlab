@@ -14,7 +14,7 @@ vals = arr(:,end);
 %create tensor tool box sptensor
 X = sptensor(idx,vals);
 
-t = read_tns(file);
+t = read_htns(file);
 
 %check if the answers are the same
 htns_norm(t)

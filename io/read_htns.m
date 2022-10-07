@@ -8,7 +8,7 @@
 % Expects text file input of the format: 
 %       idx_1, idx_2,...idx_n val
 
-function t = read_tns(file)
+function t = read_htns(file)
     table = readtable(file);
     arr = table2array(table);
     

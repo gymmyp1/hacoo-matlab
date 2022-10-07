@@ -1,6 +1,5 @@
-%Returns the size of mode n of sparse tensor X.
-%Temporary to work with Tensor Toolbox.
+%Returns the modes HaCOO sparse tensor X.
 
-function size = htns_size(X,n)
-    size = X.modes(n);
+function size = htns_size(X)
+    size = X.modes;
 end

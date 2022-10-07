@@ -1,10 +1,10 @@
 %testing writing tensor to file in HaCOO format
 addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
-t = read_tns('test.txt');
+t = read_htns('test.txt');
 
 file = "test_hacoo.txt";
-t.write_tns(file);
+t.write_htns(file);
 
 %{
 function write_tns(t,file)
@@ -23,7 +23,7 @@ function write_tns(t,file)
 end
 %}
 
-function t = read_tns(file)
+function t = read_htns(file)
     T = readtable(file);
     nnz = height(T);
 

@@ -85,10 +85,12 @@ else
     % Observe that we don't need to calculate an initial guess for the
     % first index in dimorder because that will be solved for in the first
     % inner iteration.
+    %changed this to calc the first guess anyway...
     if strcmp(init,'random')
         Uinit = cell(N,1);
-        for n = dimorder(2:end)
-            Uinit{n} = rand(htns_size(X,n),n);
+        %for n = dimorder(2:end)
+        for n = dimorder(1:end)
+            Uinit{n} = rand(htns_size(X,n),R);
         end
     elseif strcmp(init,'nvecs') || strcmp(init,'eigs') %this has been left alone...
         Uinit = cell(N,1);
@@ -107,23 +109,21 @@ fit = 0;
 % Store the last MTTKRP result to accelerate fitness computation.
 U_mttkrp = zeros(htns_size(X, dimorder(end)), R);
 
-for n = 1:T.nmodes
-    U_mttkrp{n} = zeros(T.modes(n), fmax); %<--matricize with respect to dimension n.
-end
-
 if printitn>0
   fprintf('\nCP_ALS:\n');
 end
 
 %% Main Loop: Iterate until convergence
 
-if (isa(X,'sptensor') || isa(X,'tensor')) && (exist('cpals_core','file') == 3)
+%if (isa(X,'sptensor') || isa(X,'tensor')) && (exist('cpals_core','file') == 3)
  
     %fprintf('Using C++ code\n');
-    [lambda,U] = cpals_core(X, Uinit, fitchangetol, maxiters, dimorder);
-    P = ktensor(lambda,U);
+    % not sure where this file is, so commenting out for now...
+    %[lambda,U] = cpals_core(X, Uinit, fitchangetol, maxiters, dimorder);
+    %P = ktensor(lambda,U);
     
-else
+%else
+    
     
     UtU = zeros(R,R,N);
     for n = 1:N
@@ -131,6 +131,7 @@ else
             UtU(:,:,n) = U{n}'*U{n};
         end
     end
+    
     
     for iter = 1:maxiters
         
@@ -170,7 +171,7 @@ else
 
         % This is equivalent to innerprod(X,P).
         %iprod = sum(sum(P.U{dimorder(end)} .* U_mttkrp) .* lambda');
-        iprod = innerprod(X,P);
+        iprod = htns_innerprod(X,P); %changed to HaCOO-specific innerprod function.
         if normX == 0
             fit = norm(P)^2 - 2 * iprod;
         else
@@ -195,7 +196,7 @@ else
             break;
         end        
     end   
-end
+%end %<- end if (isa(X,'sptensor') || isa(X,'tensor')) && (exist('cpals_core','file') == 3)
 
 
 %% Clean up final result

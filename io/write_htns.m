@@ -9,7 +9,7 @@
 % Writes to text file in the format: 
 %       idx_1, idx_2,...idx_n val
 
-function write_tns(t, file)
+function write_htns(t, file)
     fprintf("Writing tensor to file...\n");
     fileID = fopen(file,'w');
     

@@ -5,7 +5,7 @@ addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
 file = 'x.txt';
 %file = 'uber_trim.txt';
-T = read_tns(file);
+T = read_htns(file);
 
 M = htns_cp_als(T,50);
 

@@ -372,7 +372,7 @@ classdef htensor
         end
 
         % Function to print all nonzero elements stored in the tensor.
-        function display_tns(t)
+        function display_htns(t)
             fprintf("Printing tensor nonzeros...\n");
             for i = 1:t.nbuckets
                 %skip empty buckets
