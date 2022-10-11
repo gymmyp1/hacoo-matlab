@@ -1,24 +1,33 @@
-%Test for htns_innerprod function.
+%Test correctness of htns_innerprod function.
 
-addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
-%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
+%addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
+addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
-file = 'x.txt';
-T = read_htns(file);
+%set up answers array
+htns_ans = {};
+tt_ans = {};
 
-%set up Tensor Toolbox sptensor
-table = readtable(file);
-idx = table(:,1:end-1);
-vals = table(:,end);
-idx = table2array(idx);
-vals = table2array(vals);
 
-X = sptensor(idx,vals);
+%set up 10 trials
+for n = 1:10
+    %set up random sptensor
+    X = sptensor(rand(2,1,4));
+    A = htensor(X.subs,X.vals);
 
-%set up tensor Y
+    htns_ans{end+1} = htns_innerprod(A,X);
+    tt_ans{end+1} = innerprod(X,X);
+end
 
-%tensor toolbox's version
-%a2 = innerprod(X,X)
-
-%my version
-a1 = htns_innerprod(T,X)
+%check if answers match
+for i = 1:length(htns_ans)
+    
+    if htns_ans{i} == tt_ans{i}
+        fprintf("solutions match.\n");
+    else 
+        fprintf("solution does not match.\n");
+        fprintf("hacoo mttkrp ans: \n");
+        disp(htns_ans{i});
+        fprintf("tensor toolbox mttkrp ans: \n");
+        disp(tt_ans{i});
+    end
+end
