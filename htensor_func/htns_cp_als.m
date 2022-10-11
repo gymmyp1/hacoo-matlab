@@ -48,7 +48,7 @@ function [P,Uinit,output] = htns_cp_als(X,R,varargin)
 
 
 %% Extract number of dimensions and norm of X.
-N = htns_nmodes(X);
+N = htns_ndims(X);
 normX = htns_norm(X); %changed to htensor's norm function
 
 %% Set algorithm parameters from input or by using defaults

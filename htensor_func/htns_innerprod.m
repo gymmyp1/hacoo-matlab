@@ -1,26 +1,34 @@
-% R = INNERPROD(X,Y) computes the inner product between
-% HaCOO sparse tensor X and ktensor Y supported by Tensor Toolbox).
-% If Y is a ktensor, the inner product is
-% computed using inner products of the factor matrices, X{i}'*Y{i}.
+%INNERPROD Efficient inner product with a sparse tensor.
+%
+%   R = INNERPROD(X,Y) efficiently computes the inner product between
+%   two tensors X and Y.  If Y is a tensor or sptensor, the inner
+%   product is computed directly and the computational complexity is
+%   O(min(nnz(X),nnz(Y))). If Y is a ktensor or a ttensor, the
+%   inner product method for that type of tensor is called.
+%
+%   See also SPTENSOR, KTENSOR/INNERPROD, TTENSOR/INNERPROD.
+%
+%Tensor Toolbox for MATLAB: <a href="https://www.tensortoolbox.org">www.tensortoolbox.org</a>
 
 
 function res = htns_innerprod(X,Y)
-% check if X and Y are same size
-if ~isequal(htns_size(X),size(Y))
-    error('X and Y must be the same size.');
-end
 
-% Y is a ktensor
+%X is a HaCOO htensor
 switch class(Y)
 
-    case {'ktensor'}
-        M = X.lambda * Y.lambda';
-        for n = 1:ndims(X)
-            M = M .* (X.u{n}' * Y.u{n});
-        end
-        res = sum(M(:));
+    case {'ktensor','ttensor'}
+        %Reverse the inputs to call ktensor/ttensor implementation
+        res = htns_ktns_innerprod(Y,X);
+        return;
 
-    otherwise
+    case {'sptensor'}
+
+        % check if X and Y are same size
+        if ~isequal(htns_size(X),size(Y))
+            error('X and Y must be the same size.');
+        end
+
+
         if nnz(Y) == 0 %There are no nonzero terms in Y.
             res = 0;
             return
@@ -35,5 +43,10 @@ switch class(Y)
         end
         res = VY'*VX;
         return;
+
+    otherwise
+        error(['Inner product not available for class ' class(Y)]);
 end
+
+
 end

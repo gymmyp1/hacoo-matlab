@@ -1,7 +1,7 @@
 %Test correctness of htns_innerprod function.
 
-%addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
-addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
+addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
+%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 %set up answers array
 htns_ans = {};
