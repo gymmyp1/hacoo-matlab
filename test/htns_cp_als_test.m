@@ -5,11 +5,11 @@ addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
 %file = 'x.txt';
 file = 'uber_trim.txt';
-T = read_htns(file);
+%T = read_htns(file);
 
-M = htns_cp_als(T,50);
+%M = htns_cp_als(T,50);
 
-%{
+
 %make tensor toolbox sptensor
 table = readtable(file);
 arr = table2array(table);
@@ -19,5 +19,5 @@ vals = arr(:,end);
 
 %create tensor toolbox sptensor
 X = sptensor(idx,vals);
-tt_res = cp_als(X,50) %compare to TT's results
-%}
+tt_res = cp_als(X,50); %compare to TT's results
+

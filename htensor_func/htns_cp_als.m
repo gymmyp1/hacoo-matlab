@@ -208,10 +208,12 @@ if params.Results.fixsigns
 end
 
 if printitn>0
+    % this is temporary until innerprod
+    % with a kruskal and htensor is implemented
+    X = sptensor(X.all_indexes(),X.all_vals()');
     if normX == 0
         fit = norm(P)^2 - 2 * innerprod(X,P);
     else
-        %changed to htns_specific inner_prod
         normresidual = sqrt( normX^2 + norm(P)^2 - 2 * innerprod(X,P) );
         fit = 1 - (normresidual / normX); %fraction explained by model
     end
