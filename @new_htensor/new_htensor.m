@@ -1,14 +1,17 @@
 % HACOO class for sparse tensor storage.
-% Working file 9/19
+% Working file 10/17 with parallel matrices approach
 %
 %HACOO methods:
 
-classdef htensor
+classdef new_htensor
     properties
         table   %<-- hash table
+        table_width
+        vals %<-- values matrix
         nbuckets  %<-- number of slots in hash table
         modes   %<-- modes list
         nmodes %<-- number of modes
+        depth %<-- to keep track of each bucket's chain length
         bits
         sx
         sy
@@ -20,7 +23,7 @@ classdef htensor
     end
     methods
 
-        function t = htensor(varargin) %<-- Class constructor
+        function t = new_htensor(varargin) %<-- Class constructor
             %HACOO Create a sparse tensor using HaCOO storage.
             %Parameters:
             %       modes - array of tensor modes
@@ -68,9 +71,18 @@ classdef htensor
         function t = hash_init(t,n)
 
             t.nbuckets = n;
+            %Table width may need to grow if chain depth gets bigger than 64
+            t.table_width = 64;
 
             % create column vector w/ appropriate number of bucket slots
-            t.table = cell(t.nbuckets,1);
+            %t.table = cell(t.nbuckets,1);
+            t.table = zeros(t.nbuckets,t.table_width);
+
+            %Create a parallel values matrix
+            t.vals = zeros(t.nbuckets,t.table_width);
+
+            %Array to keep track of each bucket's chain length
+            t.depth = zeros(t.nbuckets,1);
 
             % Set hashing parameters
             t.bits = ceil(log2(t.nbuckets));
@@ -88,25 +100,23 @@ classdef htensor
             %{
 		Set a list of subscripts and values in the sparse tensor hash table.
 		Parameters:
-			subs - Array of nonzero subscripts
-            vals - Array of nonzero tensor values
+			subs - table of nonzero subscripts
+            vals - table of nonzero tensor values
 		Returns:
-			A hacoo data type with a populated hash table.
+			A hacoo data type with a populated table and value matrix. 
+            Index ids are their morton encoding.
             %}
 
-            summed_idx = cast(sum(idx,2),'int32');
-            summed_idx = summed_idx';
-
-            % hash indexes for the hash keys
-            keys = arrayfun(@t.hash, summed_idx);
-
+            %Apply the hash to all nonzero entries' indexes
+            summed = sum(idx(:,1:end),2);
+            keys = t.hash(summed);
+            
             %Set everything in the table
             prog = 0;
             for i = 1:size(idx,1)
                 k = keys(i);
                 v = vals(i);
-                si = idx(i,:); %<-- store the index tuple
-                %si = concat_idx(i);
+                si = morton_encode(idx(i,:)); %<-- original index can be recoved from the morton code
 
                 %check if any keys are equal to 0, due to matlab indexing
                 if k < 1
@@ -115,30 +125,22 @@ classdef htensor
 
                 % We already have the index and key, insert accordingly
                 if v ~= 0
-                    t.table{k}{end+1} = node(si, v);
+                    t.table(k,t.depth(k)+1) = si;
+                    t.vals(k,t.depth(k)+1) = v;
                     t.hash_curr_size = t.hash_curr_size + 1;
-                    depth = length(t.table{k});
-                    if depth > t.max_chain_depth
-                        t.max_chain_depth = depth;
+                    t.depth(k) = t.depth(k)+1;
+                    if t.depth > t.max_chain_depth
+                        t.max_chain_depth = t.depth;
                     end
                 else
                     %remove entry in table
                 end
                 prog = prog + 1;
-                if mod(prog,1000000) == 0
-                    prog
+                if mod(prog,1000) == 0
+                    disp(prog);
                 end
             end
 
-            %{
-            %concatenate index
-            function res = cc(idx)
-                res = join(strcat(idx)); %<-- concatenate across columns
-                res = strrep(res,' ',''); %<-- remove spaces
-                res = str2num(res); %<-- convert to int 
-                res = uint16(res);
-            end
-            %}
         end
 
 
@@ -317,7 +319,7 @@ classdef htensor
             vals = t.all_vals();
 
             %Create new tensor, constructor will fill new values into table
-            new = htensor(indexes,vals);
+            new = new_htensor(indexes,vals);
 
             fprintf("done rehashing\n");
         end
@@ -343,19 +345,19 @@ classdef htensor
             end
         end
 
-        %Returns array res containing all nnz index subscripts
+        %Returns cell array res containing all nnz index subscripts
         % in the HaCOO sparse tensor t.
         function res = all_indexes(t)
-            res = zeros(t.hash_curr_size,t.nmodes); %<-- preallocate matrix
-            ri = 1; %<-- counter
+            res = cell(1,t.hash_curr_size);  %<-- preallocate array
+            vi = 1; %<-- counter
             for i = 1:t.nbuckets
-                if isempty(t.table{i})  %<-- skip bucket if empty
-                    continue
-                else
-                    for j = 1:length(t.table{i})
-                        %Concatenate the index array into result array
-                        res(ri,:) = t.table{i}{j}.idx_id;
-                        ri = ri + 1;
+                for j = 1:t.table_width
+                    if t.table(i,j) == 0  %<-- skip if empty
+                        continue
+                    else
+                        %Append all the nonzeroes into an array
+                        res{vi} = morton_decode(t.table(i,j),t.nmodes);
+                        vi = vi+1;
                     end
                 end
             end
@@ -363,34 +365,49 @@ classdef htensor
 
 
         %Returns an array v containing all nonzeroes in the sparse tensor.
-        function v = all_vals(t)
-            v = zeros(1,t.hash_curr_size);  %<-- preallocate array
+        function res = all_vals(t)
+            res = zeros(1,t.hash_curr_size);  %<-- preallocate array
             vi = 1; %<-- counter
             for i = 1:t.nbuckets
-                if isempty(t.table{i})  %<-- skip bucket if empty
-                    continue
-                else
-                    for j = 1:length(t.table{i})
+                for j = 1:t.table_width
+                    if t.table(i,j) == 0  %<-- skip if empty
+                        continue
+                    else
                         %Append all the nonzeroes into an array
-                        v(vi) = t.table{i}{j}.value;
+                        res(vi) = t.vals(i,j);
                         vi = vi+1;
                     end
                 end
             end
         end
 
+        %Save the table and values matrix to .mat file
+        % file name must end in '.mat'
+        function save_htns(t, file)
+            A = t.table;
+            save(file,'A');
+        end
+
+        %Load the table matrix from a .mat file
+        function t = load_htns_table(file)
+            example = matfile(file);
+            t = example.A;
+        end
+
         % Function to print all nonzero elements stored in the tensor.
         function display_htns(t)
             fprintf("Printing tensor nonzeros...\n");
             for i = 1:t.nbuckets
-                %skip empty buckets
-                if isempty(t.table{i})
-                    continue
-                else
-                    for j = 1:length(t.table{i})
-                        disp(t.table{i}{j});
+               for j = 1:t.table_width
+                   if t.table(i,j) == 0  %<-- skip if empty
+                        continue
+                   else
+                       idx = morton_decode(t.table(i,j),t.nmodes);
+                       v = t.vals(i,j);
+                       disp(idx);
+                       disp(v);
                     end
-                end
+               end
             end
         end
 
