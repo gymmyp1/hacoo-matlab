@@ -8,11 +8,11 @@
 % Expects text file input of the format: 
 %       idx_1, idx_2,...idx_n val
 
-function t = new_read_htns(file)
+function t = read_htns(file)
     table = readtable(file);
     
     idx = table{:,1:end-1};
     vals = table{:,end};
     
-    t = new_htensor(idx,vals);
+    t = htensor(idx,vals);
 end
