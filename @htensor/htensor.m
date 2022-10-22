@@ -58,7 +58,7 @@ classdef htensor
                     
                     t.modes = m{1};
                     t.nmodes = length(t.modes);
-                    t.max_chain_depth = m{2};
+                    t.max_chain_depth = max(t.depth);
                     t.hash_curr_size = m{3};
                     t.load_factor = m{4};
                     
@@ -99,7 +99,6 @@ classdef htensor
             t.table_width = 64;
 
             % create column vector w/ appropriate number of bucket slots
-            %t.table = cell(t.nbuckets,1);
             t.table = zeros(t.nbuckets,t.table_width);
 
             %Create a parallel values matrix
@@ -135,7 +134,7 @@ classdef htensor
             %}
 
             %Apply the hash to all nonzero entries' indexes
-            summed = sum(idx(:,1:end),2);
+            summed = sum(idx,2);
             keys = t.hash(summed);
             
             %Set everything in the table
@@ -163,7 +162,7 @@ classdef htensor
                     %remove entry in table
                 end
                 prog = prog + 1;
-                if mod(prog,1000) == 0
+                if mod(prog,10000) == 0
                     disp(prog);
                 end
             end
@@ -200,19 +199,17 @@ classdef htensor
             % insert accordingly
             if i == -1
                 if v ~= 0
-                    t.table{k}{end+1} = node(idx, v);
+                    t.table(k,i) = idx;
+                    t.vals(k,i) = v;
+
                     t.hash_curr_size = t.hash_curr_size + 1;
-                    depth = length(t.table{k});
-                    if depth > t.max_chain_depth
-                        t.max_chain_depth = depth;
+                    t.depth(k,1) = t.depth(k,1) + 1;
+                    if t.depth(k,1) > t.max_chain_depth
+                        t.max_chain_depth = t.depth(k,1);
                     end
                 end
             else
-                if v ~=0
-                    t.table{k}{i} = node(idx, v);
-                else
-                    t.remove_node(k,idx);
-                end
+                t.remove_index(k,idx);
             end
 
             %fprintf("index set\n");
@@ -235,6 +232,7 @@ classdef htensor
 			  the bucket and i is its location in the chain
 			if m is not found, it returns (k, -1).
             %}
+            m = morton_encode(idx);
             s = sum(idx);
             k = t.hash(s);
 
@@ -243,16 +241,17 @@ classdef htensor
                 k = 1;
             end
 
-            % Check if there are no entries in that bucket
-            if isempty(t.table{k})
+            % Check first if the bucket has no entries
+            if t.table(k,1) == 0
                 i = -1;
                 return
             end
 
             %attempt to find item in that slot's chain
-            for i = 1:length(t.table{k})
-                %fprintf('searching within chain\n');
-                if isequal(t.table{k}{i}.idx_id,idx)
+            %fprintf('searching within chain\n');
+            for i = 1:t.table_width
+                if isequal(t.table(k,i),m)
+                    %fprintf('index found.\n');
                     return
                 end
             end
@@ -260,25 +259,28 @@ classdef htensor
             return
         end
 
-        function item = get(t, i)
+        function [idx,val] = get(t, i)
             %{
 		Retrieve a tensor index. 
 		Parameters:
 			t - The tensor
             i - The tensor index to retrieve
 		Returns:
-            item - the item if found, 0.0 if not found 
+            [idx, val] - index array and value tuple, 
+                         0 in both fields if not found 
             %}
 
             [k,j] = t.search(i);
 
             if j ~= -1
-                %fprintf("item found");
-                item = t.table{k}{j};
+                fprintf("item found");
+                idx = t.table(k,j);
+                val = t.vals(k,j);
                 return
             else
-                %fprintf("item not found");
-                item = 0.0;
+                fprintf("item not found");
+                idx = 0;
+                val = 0;
                 return
             end
 
@@ -297,7 +299,7 @@ classdef htensor
             [k,j] = t.search(idx);
 
             if j ~= -1
-                v = t.table{k}{j}.value;
+                v = t.vals(k,j);
                 return
             else
                 v = 0.0;
@@ -311,7 +313,7 @@ classdef htensor
 
 		Parameters:
             t - The sparse tensor
-			m - Summed index integer
+			m - Value to hash
 
 		Returns:
 			key
@@ -323,7 +325,7 @@ classdef htensor
             k = mod(hash,t.nbuckets);
         end
 
-        % Rehash existing entries in tensor to a new tensor of a different
+        % Rehash existing entries to a new tensor of a different
         % size.
         % Parameters:
         %       t - HaCOO tensor
@@ -333,11 +335,11 @@ classdef htensor
             fprintf("Rehashing...\n");
 
             %gather all existing subscripts and vals into arrays
-            indexes = t.all_indexes();
-            vals = t.all_vals();
+            i = t.all_indexes();
+            v = t.all_vals();
 
             %Create new tensor, constructor will fill new values into table
-            new = htensor(indexes,vals);
+            new = htensor(i,v);
 
             fprintf("done rehashing\n");
         end
@@ -347,16 +349,18 @@ classdef htensor
         %       t - A HaCOO htensor
         %       i - the index entry to remove
         % Returns:
-        %       utns - the updated HaCOO tensor
+        %       res - the updated HaCOO tensor table's row
         %
-        function utns = remove_node(t,i)
-            [k,chain_idx] = t.search(i);
-
-            if chain_idx ~= -1 %<-- we located the index successfully
-                t.table{k}{chain_idx} = [];
-                %remove the leftover blank array
-                t.table{k}{chain_idx}(~cellfun('isempty',t.table{k}{chain_idx}));
-                utns = t; %<-- this is not the most efficient...
+        function res = remove_index(t,i)
+            [k,j] = t.search(i);
+            
+            res = t.table(k,:);
+            if j ~= -1 %<-- we located the index successfully
+                res(k,j) = 0;
+                %Slide all following entries in the chain back a slot
+                for n = j:t.table_width-1
+                    res(k,n) = res(k,n+1);
+                end
             else
                 fprintf("Could not remove index.\n");
                 return
@@ -401,20 +405,18 @@ classdef htensor
 
         %Save the table and values matrix to .mat file
         % file name must end in '.mat'
-        function save_htns(t)
+        function save_htns(t,file)
             A = t.table;
             B = t.vals;
             C = t.depth;
 
             %Save extra info
-            D = cell(4,1);
+            D = cell(3,1);
             D{1} = t.modes;
-            D{2} = t.max_chain_depth;
-            D{3} = t.hash_curr_size;
-            D{4} = t.load_factor;
-
-            filename = strcat('hacoo_', datestr(datetime('now')),'.mat');
-            save(filename,'A','B','C','D');
+            D{2} = t.hash_curr_size;
+            D{2} = t.load_factor;
+            
+            save(file,'A','B','C','D');
         end
 
         % Function to print all nonzero elements stored in the tensor.
