@@ -72,6 +72,9 @@ classdef htensor
             % create column vector w/ appropriate number of bucket slots
             t.table = cell(t.nbuckets,1);
 
+            %create a blank matrix in each cell to hold morton codes & vals
+            %t.table(:,:) = {zeros(64,2)};
+
             % Set hashing parameters
             t.bits = ceil(log2(t.nbuckets));
             t.sx = ceil(t.bits/8)-1;
@@ -118,9 +121,8 @@ classdef htensor
             for i = 1:size(idx,1)
                 k = keys(i);
                 v = vals(i);
-                si = idx(i,:); %<-- store the index tuple
-                %si = concat_idx(i);
-
+                si = morton_endcode(idx(i)); %<-- store the morton code
+                
                 %check if any keys are equal to 0, due to matlab indexing
                 if k < 1
                     k = 1;
@@ -128,7 +130,14 @@ classdef htensor
 
                 % We already have the index and key, insert accordingly
                 if v ~= 0
-                    t.table{k}{end+1} = node(si, v);
+                    %t.table{k}{end+1} = node(si, v);
+                    %if the slot is empty, create a new entry
+                    if(issempty(t.table{k}))
+                        t.table{k} = [si v];
+                    else
+                        %else concatenate the new entry onto the end
+                        t.table{k} = vertcat(t.table{k},[si v]);
+                    end
                     t.hash_curr_size = t.hash_curr_size + 1;
                     depth = length(t.table{k});
                     if depth > t.max_chain_depth
@@ -139,19 +148,9 @@ classdef htensor
                 end
                 prog = prog + 1;
                 if mod(prog,1000000) == 0
-                    prog
+                    disp(prog);
                 end
             end
-
-            %{
-            %concatenate index
-            function res = cc(idx)
-                res = join(strcat(idx)); %<-- concatenate across columns
-                res = strrep(res,' ',''); %<-- remove spaces
-                res = str2num(res); %<-- convert to int 
-                res = uint16(res);
-            end
-            %}
         end
 
 
