@@ -31,16 +31,23 @@ classdef htensor
             t.load_factor = 0.6;
 
             switch nargin
-                case 1 %<-- if we want to specify just modes
-                    %fprintf('creating hacoo tensor with just modes initialized\n')
-                    t.modes = varargin{1};
+
+                %Load from .mat file
+                case 1
+                    loaded = matfile(varargin{1});
+                    t.table = loaded.T; %load table
+                    m = loaded.M; %load table info
+
+                    t.nbuckets = m{1};
+                    t.modes = m{2};
                     t.nmodes = length(t.modes);
-                    NBUCKETS = 512;
+                    t.hash_curr_size = m{3};
+                    t.max_chain_depth = m{4};
+                    t.load_factor = m{5};
+                    t = t.set_hashing_params();
 
-                    % Initialize all hash table related things
-                    t = hash_init(t,NBUCKETS);
-
-                case 2 %<-- subs and vals specified
+                %Subs and vals specified as arg1 and ag2
+                case 2
                     %fprintf('creating hacoo tensor with subs and vals initialized\n')
                     idx = varargin{1};
                     vals = varargin{2};
@@ -59,23 +66,22 @@ classdef htensor
                     t.modes = 0;   %<-- EMPTY class constructor
                     t.nmodes = 0;
                     NBUCKETS = 512;
-                    % Initialize all hash table related things
                     t = hash_init(t,NBUCKETS);
             end
         end
 
         % Initialize all hash table related things
         function t = hash_init(t,n)
-
             t.nbuckets = n;
 
             % create column vector w/ appropriate number of bucket slots
             t.table = cell(t.nbuckets,1);
 
-            %create a blank matrix in each cell to hold morton codes & vals
-            %t.table(:,:) = {zeros(64,2)};
+            t = t.set_hashing_params();
+        end
 
-            % Set hashing parameters
+        % Set hashing parameters
+        function t = set_hashing_params(t)
             t.bits = ceil(log2(t.nbuckets));
             t.sx = ceil(t.bits/8)-1;
             t.sy = 4 * t.sx-1;
@@ -84,7 +90,6 @@ classdef htensor
             end
             t.sz = ceil(t.bits/2);
             t.mask = t.nbuckets-1;
-            t.max_chain_depth = 0;
         end
 
         function t = init_vals(t,idx,vals)
@@ -95,19 +100,6 @@ classdef htensor
             vals - Table of nonzero tensor values
 		Returns:
 			A hacoo data type with a populated hash table.
-            %}
-
-            %{
-            %Do all the processing to concatenate the indexes
-            %Input- table of idx and table of vals
-            idx = convertvars(idx, idx.Properties.VariableNames, 'string');
-
-            concat_idx = rowfun(@cc, idx, 'SeparateInputs', false);
-            vals = table2array(vals);
-            concat_idx = table2array(concat_idx);
-
-            % hash indexes for the hash keys
-            keys = arrayfun(@t.hash, concat_idx);
             %}
 
             summed_idx = cast(sum(idx,2),'int32');
@@ -121,7 +113,7 @@ classdef htensor
             for i = 1:size(idx,1)
                 k = keys(i);
                 v = vals(i);
-                si = morton_encode(idx(i)); %<-- store the morton code
+                si = morton_encode(idx(i,:)); %<-- store the morton code
                 
                 %check if any keys are equal to 0, due to matlab indexing
                 if k < 1
@@ -361,7 +353,6 @@ classdef htensor
                 else
                     for j = 1:size(t.table{i},1)
                         %decode the morton entry
-                        t.table{i}(j,1)
                         m = morton_decode(t.table{i}(j,1),t.nmodes);
                         res(num_entries,:) = m;
                         num_entries = num_entries + 1;

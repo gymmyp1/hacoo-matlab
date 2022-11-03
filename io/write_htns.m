@@ -1,27 +1,28 @@
-% Write a HaCOO sparse tensor to a file.
-% 
+%{ 
+  Write a HaCOO sparse tensor to a file.
+  Stored data:
+    table
+    nbuckets
+    modes
+    hash_curr_size
+    max_chain_depth
+    load factor
+  
 % Input:
 %       t - a HaCOO htensor
-%       file - text file string to write to
-% Returns:
-%       t - HaCOO htensor containing nnz from the file
-%
-% Writes to text file in the format: 
-%       idx_1, idx_2,...idx_n val
+%       file - text file string to write to, file name must end in '.mat'
+%}
 
-function write_htns(t, file)
-    fprintf("Writing tensor to file...\n");
-    fileID = fopen(file,'w');
+function write_htns(t,file)
+    T = t.table;
     
-    for i = 1:t.nbuckets
-        if isempty(t.table{i})
-            continue
-        else
-            for j = 1:length(t.table{i})
-                fprintf(fileID,'%d %f %d\n',t.table{i}{j}.morton,t.table{i}{j}.value,i);
-            end
-        end
-    end
-
-    fclose(fileID);
+    %Save extra info
+    M = cell(5,1);
+    M{1} = t.nbuckets;
+    M{2} = t.modes;
+    M{3} = t.hash_curr_size;
+    M{4} = t.max_chain_depth;
+    M{5} = t.load_factor;
+    
+    save(file,'T','M');
 end
