@@ -23,7 +23,6 @@ m = zeros(T.modes(n), fmax);
 % go through each column
 for f=1:fmax
     % accumulation arrays
-    z=1;
     t=[];
     tind=[];
     
@@ -32,9 +31,11 @@ for f=1:fmax
         if isempty(T.table{k})
             continue
         end
-        for j=1:length(T.table{k})  %<-- loop over each entry in that bucket
-            idx = T.table{k}{j}.idx_id;
-            t(end+1) = T.table{k}{j}.value;
+        for j=1:size(T.table{k},1)  %<-- loop over each entry in that bucket
+            %idx = T.table{k}{j}.idx_id;
+            idx = morton_decode(T.table{k}(j,1),T.nmodes);
+            %t(end+1) = T.table{k}{j}.value;
+            t(end+1) = T.table{k}(j,2);
             tind(end+1) = idx(n);
             z = length(t);
     
@@ -60,4 +61,10 @@ for f=1:fmax
 end
 %return m;
 
+fprintf('size of t:');
+disp(size(tind))
+fprintf('\n');
+fprintf('size of tind:');
+disp(size(tind))
+fprintf('\n');
 end %<-- end function

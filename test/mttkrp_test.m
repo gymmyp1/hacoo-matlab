@@ -1,17 +1,7 @@
 %File to check HaCOO MTTKRP function.
 
-%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
+addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
-
-%{
-a = [1 3 5; 2 4 6];
-b = [1 4 7; 2 5 8; 3 6 9];
-c = [1 2 3; 4 5 6; 7 8 9; 10 11 12];
-U = cell(1,modes);
-U{1} = a;
-U{2} = b;
-U{3} = c;
-%}
 
 file = 'y.txt';
 T = read_htns(file); %<--HaCOO htensor

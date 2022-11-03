@@ -9,8 +9,11 @@ t = read_htns('x.txt')
 %t = read_htns('uber.txt')
 
 
-get_tests(t)
-display_tests(t)
+%get_tests(t)
+%display_tests(t)
+%t.all_indexes
+%t.all_vals
+
 
 toc
 
