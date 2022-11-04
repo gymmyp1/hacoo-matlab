@@ -132,7 +132,7 @@ classdef htensor
                         t.table{k} = vertcat(t.table{k},[si v]);
                     end
                     t.hash_curr_size = t.hash_curr_size + 1;
-                    depth = length(t.table{k});
+                    depth = size(t.table{k},1);
                     if depth > t.max_chain_depth
                         t.max_chain_depth = depth;
                     end

@@ -1,3 +1,6 @@
+%11/4: This needs to be updated to reflect updated table structure.
+
+
 function res = htns_getslice(t, slice)
 
     resModes = cell(t.nmodes,1);

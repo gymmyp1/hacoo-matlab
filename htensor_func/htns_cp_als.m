@@ -142,6 +142,7 @@ end
             
             % Calculate Unew = X_(n) * khatrirao(all U except n, 'r').
             Unew = htns_mttkrp(X,U,n); %changed to HaCOO specific mttkrp
+            fprintf("new mttkrp\n");
             % Save the last MTTKRP result for fitness check.
             if n == dimorder(end)
               U_mttkrp = Unew;
