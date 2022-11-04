@@ -1,4 +1,5 @@
 %File to check HaCOO MTTKRP function.
+%Uses arrays that grow each time (this is slow).
 
 %addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
@@ -25,6 +26,11 @@ col_sz = 2;
 for n = 1:N
     Uinit{n} = rand(T.modes(n),col_sz);
 end
+
+
+%Uinit{1} = [2 3 1; 3 1 1];
+%Uinit{2} = [3 2 2; 2 3 1; 2 2 2];
+%Uinit{3} = [1 1 2];
 
 U = Uinit;
 

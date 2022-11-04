@@ -19,29 +19,33 @@ fmax = size(u{1},2);
     
 % create the result array
 m = zeros(T.modes(n), fmax);
+ac = 1; %counter for accumulation arrays    
 
 % go through each column
 for f=1:fmax
-    % preallocate accumulation arrays
-    t=zeros(1,T.hash_curr_size);
-    tind=zeros(1,T.hash_curr_size);
-    ac = 1; %counter index for accumulation arrays    
-
+    % accumulation arrays
+    t = [];
+    tind = [];
+    %t=zeros(1,T.hash_curr_size);
+    %tind=zeros(1,T.hash_curr_size);
+    
     % go through every non-zero
     for k=1:T.nbuckets
         if isempty(T.table{k})
             continue
         end
         for j=1:size(T.table{k},1)  %<-- loop over each entry in that bucket
-
             idx = morton_decode(T.table{k}(j,1),T.nmodes);
+            t(end+1) = T.table{k}(j,2);
+            tind(end+1) = idx(n);
 
-            t(ac) = T.table{k}(j,2);
-            tind(ac) = idx(n);
-            ac = ac + 1; %next index to insert into
-            
-            %update how many elements have been accumulated so far
-            z = ac-1;
+            %{
+            t(ac) = T.table{k}(j,2)
+            tind(ac) = idx(n)
+            ac = ac + 1;
+            %}
+
+            z = length(t)
     
             % multiply by the factor matrix entries
             i=1;
@@ -64,5 +68,14 @@ for f=1:fmax
     end
 end
 %return m;
+
+%{
+fprintf('size of t:');
+disp(size(t))
+fprintf('\n');
+fprintf('size of tind:');
+disp(size(tind))
+fprintf('\n');
+%}
 
 end %<-- end function
