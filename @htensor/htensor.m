@@ -1,5 +1,5 @@
 % HACOO class for sparse tensor storage.
-% Working file 9/19
+% Working file 11/4: going to store indexes explicitly
 %
 %HACOO methods:
 
@@ -73,7 +73,7 @@ classdef htensor
         % Initialize all hash table related things
         function t = hash_init(t,n)
             t.nbuckets = n;
-
+            t.max_chain_depth = 0;
             % create column vector w/ appropriate number of bucket slots
             t.table = cell(t.nbuckets,1);
 
@@ -113,7 +113,8 @@ classdef htensor
             for i = 1:size(idx,1)
                 k = keys(i);
                 v = vals(i);
-                si = morton_encode(idx(i,:)); %<-- store the morton code
+                si = idx(i,:); %changing to explicitly storing index as is
+                %si = morton_encode(idx(i,:)); %<-- store the morton code
                 
                 %check if any keys are equal to 0, due to matlab indexing
                 if k < 1
@@ -125,11 +126,11 @@ classdef htensor
                     %t.table{k}{end+1} = node(si, v);
                     %if the slot is empty, create a new entry
                     if(isempty(t.table{k}))
-                        t.table{k} = [si v];
+                        t.table{k} = {si v};
                     else
                         %else concatenate the new entry vertically
                         % under existing entry
-                        t.table{k} = vertcat(t.table{k},[si v]);
+                        t.table{k} = vertcat(t.table{k},{si v});
                     end
                     t.hash_curr_size = t.hash_curr_size + 1;
                     depth = size(t.table{k},1);
@@ -140,7 +141,7 @@ classdef htensor
                     %remove entry in table
                 end
                 prog = prog + 1;
-                if mod(prog,1000000) == 0
+                if mod(prog,10000) == 0
                     disp(prog);
                 end
             end
@@ -176,12 +177,12 @@ classdef htensor
             % insert accordingly
             if i == -1
                 if v ~= 0
-                     m = morton_encode(idx);
+
                     if isempty(t.table{k})
-                        t.table{k} = [m v];
+                        t.table{k} = [idx v];
                     else
                         %if not empty, append to the end
-                        t.table{k} = vertcat(t.table{k},[m v]);
+                        t.table{k} = vertcat(t.table{k},{idx v});
                     end
                     t.hash_curr_size = t.hash_curr_size + 1;
                     depth = size(t.table{k},1);
@@ -217,7 +218,6 @@ classdef htensor
             %}
             s = sum(idx);
             k = t.hash(s);
-            m = morton_encode(idx);
 
             %b/c of MATLAB indexing...
             if k <= 0
@@ -232,10 +232,13 @@ classdef htensor
 
             %attempt to find item in that slot's chain
             %fprintf('searching within chain\n');
-            %search for the index's morton code in the first column
-            i = find(t.table{k}(:,1) == m);
-            if (i)
-                return
+            %search for the index in the first column
+            for i = size(t.table{k},1)
+
+                if t.table{k}{i} == idx
+                    %return i
+                    return
+                end
             end
     
             i = -1;
@@ -256,7 +259,7 @@ classdef htensor
 
             if j ~= -1
                 %fprintf("item found");
-                item = t.table{k}(k,:);
+                item = t.table{k}{j,:};
                 return
             else
                 %fprintf("item not found");
@@ -265,7 +268,7 @@ classdef htensor
             end
         end
     
-
+        %Updated 11/4
         function v = extract_val(t,idx)
             %{
 		Retrieve the value of tensor index. 
@@ -278,7 +281,7 @@ classdef htensor
             [k,j] = t.search(idx);
 
             if j ~= -1
-                v = t.table{k}(j,:);
+                v = t.table{k}{j,2};
                 return
             else
                 v = 0.0;
@@ -304,6 +307,7 @@ classdef htensor
             k = mod(hash,t.nbuckets);
         end
 
+        % 11/4: Needs to be updated.
         % Rehash existing entries in tensor to a new tensor of a different
         % size.
         % Parameters:
@@ -323,6 +327,7 @@ classdef htensor
             fprintf("done rehashing\n");
         end
 
+        %11/4: Needs to be updated.
         % Remove a nonzero entry.
         % Parameters:
         %       t - A HaCOO htensor
@@ -352,9 +357,7 @@ classdef htensor
                     continue
                 else
                     for j = 1:size(t.table{i},1)
-                        %decode the morton entry
-                        m = morton_decode(t.table{i}(j,1),t.nmodes);
-                        res(num_entries,:) = m;
+                        res(num_entries,:) = t.table{i}{j};
                         num_entries = num_entries + 1;
                     end
                 end
@@ -371,7 +374,7 @@ classdef htensor
                     continue
                 else
                     for j = 1:size(t.table{i},1)
-                        res(num_entries) = t.table{i}(j,2);
+                        res(num_entries) = t.table{i}{j,2};
                         num_entries = num_entries + 1;
                     end
                 end
@@ -387,7 +390,7 @@ classdef htensor
                     continue
                 else
                     for j = 1:size(t.table{i},1)
-                        disp(t.table{i}(j,:));
+                        disp(t.table{i});
                     end
                 end
             end

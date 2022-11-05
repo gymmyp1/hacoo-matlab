@@ -4,9 +4,13 @@ addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 %addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 tic
-t = read_htns('uber_trim.txt');
 
-file = "ubertrim_hacoo.mat";
-write_htns(t,file);
+fprintf("Saving tensor to file...\n");
+%t = read_htns('uber_trim.txt');
+t = read_htns('uber.txt');
+
+%matfile = "ubertrim_hacoo.mat";
+matfile = "uber_hacoo.mat";
+write_htns(t,matfile);
 
 toc

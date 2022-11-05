@@ -34,9 +34,9 @@ for f=1:fmax
         end
         for j=1:size(T.table{k},1)  %<-- loop over each entry in that bucket
 
-            idx = morton_decode(T.table{k}(j,1),T.nmodes);
+            idx = T.table{k}{j};
 
-            t(ac) = T.table{k}(j,2);
+            t(ac) = T.table{k}{j,2};
             tind(ac) = idx(n);
             ac = ac + 1; %next index to insert into
             

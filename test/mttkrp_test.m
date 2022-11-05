@@ -3,11 +3,15 @@
 %addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
-file = 'y.txt';
-T = read_htns(file); %<--HaCOO htensor
+%file = 'y.txt';
+%T = read_htns(file); %<--HaCOO htensor
+
+file = 'ubertrim_hacoo.mat';
+T = load_htns(file);
 
 %set up Tensor Toolbox sptensor
-table = readtable(file);
+%table = readtable(file);
+table = readtable('uber_trim.txt');
 idx = table(:,1:end-1);
 vals = table(:,end);
 idx = table2array(idx);
@@ -20,7 +24,8 @@ N = T.nmodes;
 dimorder = 1:N;
 Uinit = cell(N,1);
 
-col_sz = 2;
+%this shold correspond to the number of components in the decomposition
+col_sz = 2; 
 
 for n = 1:N
     Uinit{n} = rand(T.modes(n),col_sz);
@@ -45,6 +50,7 @@ for n = 1:T.nmodes
     tt_ans{end+1} = mttkrp(X,U,n); %<--matricize with respect to dimension i.
 end
 
+%{
 %check if answers match
 for i = 1:length(htns_ans)
 
@@ -52,9 +58,10 @@ for i = 1:length(htns_ans)
         fprintf("solutions match.\n");
     else 
         fprintf("solution does not match.\n");
-        fprintf("hacoo mttkrp ans: \n");
-        disp(htns_ans{i});
-        fprintf("tensor toolbox mttkrp ans: \n");
-        disp(tt_ans{i});
+        %fprintf("hacoo mttkrp ans: \n");
+        %disp(htns_ans{i});
+        %fprintf("tensor toolbox mttkrp ans: \n");
+        %disp(tt_ans{i});
     end
 end
+%}

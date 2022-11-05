@@ -8,8 +8,8 @@ t = read_htns('x.txt')
 %t = read_htns('uber_trim.txt')
 %t = read_htns('uber.txt')
 
-
-%get_tests(t)
+%t.display_htns()
+get_tests(t)
 %display_tests(t)
 %t.all_indexes
 %t.all_vals
