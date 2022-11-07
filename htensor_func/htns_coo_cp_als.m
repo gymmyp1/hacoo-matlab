@@ -46,14 +46,18 @@ function [P,Uinit,output] = htns_coo_cp_als(X,R,varargin)
 %
 %Tensor Toolbox for MATLAB: <a href="https://www.tensortoolbox.org">www.tensortoolbox.org</a>
 
-%% Create an equivalent sptensor from the HaCOO tensor.
-inds = X.all_indexes();
-vals = X.all_vals();
-X = sptensor(inds, vals);
+%% Copy X over to T
+T = X;
 
-%% Extract number of dimensions and norm of X.
-N = ndims(X);
-normX = norm(X);
+% Retrieve all indexes and vals from the HaCOO tensor
+tsubs = T.all_subs();
+tvals = T.all_vals();
+%% Temporary: create a duplicate sptensor until innerprod with HaCOO and
+% ktensor is implemented.
+X = sptensor(tsubs,tvals);
+%% Extract number of dimensions and norm of T.
+N = T.nmodes;
+normX = htns_norm(T);
 
 %% Set algorithm parameters from input or by using defaults
 params = inputParser;
@@ -109,7 +113,7 @@ U = Uinit;
 fit = 0;
 
 % Store the last MTTKRP result to accelerate fitness computation.
-U_mttkrp = zeros(size(X, dimorder(end)), R);
+U_mttkrp = zeros(size(T, dimorder(end)), R);
 
 if printitn>0
   fprintf('\nCP_ALS:\n');
@@ -140,7 +144,7 @@ else
         for n = dimorder(1:end)
             
             % Calculate Unew = X_(n) * khatrirao(all U except n, 'r').
-            Unew = mttkrp(X,U,n);
+            Unew = htns_coo_mttkrp(T,tsubs,tvals,U,n); %changed to HaCOO mttkrp
             % Save the last MTTKRP result for fitness check.
             if n == dimorder(end)
               U_mttkrp = Unew;
@@ -170,7 +174,9 @@ else
 
         % This is equivalent to innerprod(X,P).
         %iprod = sum(sum(P.U{dimorder(end)} .* U_mttkrp) .* lambda');
-        iprod = innerprod(X,P);
+        %iprod = innerprod(X,P);
+        iprod = htns_ktns_innerprod(T,P); %HaCOO and ktersor innerprod
+        
         if normX == 0
             fit = norm(P)^2 - 2 * iprod;
         else
@@ -199,6 +205,7 @@ end
 
 
 %% Clean up final result
+
 % Arrange the final tensor so that the columns are normalized.
 P = arrange(P);
 % Fix the signs
