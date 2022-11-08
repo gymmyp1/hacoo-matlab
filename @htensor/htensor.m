@@ -156,20 +156,19 @@ classdef htensor
         % Returns-
         %       t - the updated tensor
         function t = set(t,idx,v)
-            %{
+            
             % build the modes if we need
             if t.modes == 0
-                t.modes = zeros(length(i));
-                t.nmodes = length(i);
+                t.modes = zeros(length(idx));
+                t.nmodes = length(idx);
             end
 
             % update any mode maxes as needed
             for m = 1:t.nmodes
-                if t.modes(m) < i(m)
-                    t.modes(m) = i(m);
+                if t.modes(m) < idx(m)
+                    t.modes(m) = idx(m);
                 end
             end
-            %}
 
             % find the index
             [k, i] = t.search(idx);
@@ -179,7 +178,7 @@ classdef htensor
                 if v ~= 0
 
                     if isempty(t.table{k})
-                        t.table{k} = [idx v];
+                        t.table{k} = {idx v};
                     else
                         %if not empty, append to the end
                         t.table{k} = vertcat(t.table{k},{idx v});
@@ -195,7 +194,8 @@ classdef htensor
                 return
             end
 
-            %fprintf("index set\n");
+            fprintf("Nonzero entry has been set: ");
+            disp(idx);
 
             % Check if we need to rehash
             if((t.hash_curr_size/t.nbuckets) > t.load_factor)
@@ -230,11 +230,9 @@ classdef htensor
                 return
             end
 
-            %attempt to find item in that slot's chain
+            %attempt to find item in that bubcket's chain
             %fprintf('searching within chain\n');
-            %search for the index in the first column
-            for i = size(t.table{k},1)
-
+            for i = 1:size(t.table{k},1)
                 if t.table{k}{i} == idx
                     %return i
                     return
@@ -242,7 +240,6 @@ classdef htensor
             end
     
             i = -1;
-            return
         end
 
         function item = get(t, i)
@@ -268,7 +265,6 @@ classdef htensor
             end
         end
     
-        %Updated 11/4
         function v = extract_val(t,idx)
             %{
 		Retrieve the value of tensor index. 
@@ -307,7 +303,6 @@ classdef htensor
             k = mod(hash,t.nbuckets);
         end
 
-        % 11/4: Needs to be updated.
         % Rehash existing entries in tensor to a new tensor of a different
         % size.
         % Parameters:
@@ -324,25 +319,25 @@ classdef htensor
             %Create new tensor, constructor will fill new values into table
             new = htensor(indexes,vals);
 
-            fprintf("done rehashing\n");
+            fprintf("Done rehashing,\n");
         end
 
-        %11/4: Needs to be updated.
         % Remove a nonzero entry.
         % Parameters:
         %       t - A HaCOO htensor
         %       i - the index entry to remove
         % Returns:
-        %       res - the updated table cell/bucket
+        %       t - the updated tensor
         %
-        function res = remove_node(t,i)
+        function t = remove(t,i)
             [k,j] = t.search(i);
 
             if j ~= -1 %<-- we located the index successfully
+                fprintf("Deleting entry: ");
+                disp(i);
                 t.table{k}(j,:) = []; %delete the row
-                res = t.table{k};
             else
-                fprintf("Could not remove index.\n");
+                fprintf("Could not remove nonzero entry.\n");
                 return
             end
         end
@@ -563,15 +558,13 @@ classdef htensor
 
         % Function to print all nonzero elements stored in the tensor.
         function display_htns(t)
-            fprintf("Printing tensor nonzeros...\n");
+            fprintf("Printing tensor nonzeros.\n");
             for i = 1:t.nbuckets
                 %skip empty buckets
                 if isempty(t.table{i})
                     continue
                 else
-                    for j = 1:size(t.table{i},1)
-                        disp(t.table{i});
-                    end
+                    disp(t.table{i});
                 end
             end
         end
