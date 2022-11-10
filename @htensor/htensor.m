@@ -153,26 +153,41 @@ classdef htensor
         %       t - The hacoo sparse tensor
         %       idx - The nonzero index array
         %       v - The nonzero value
+        % Optionally -
+        %       skip search step & updating modes if we already know bucket and chain/row index
         % Returns-
         %       t - the updated tensor
-        function t = set(t,idx,v)
-            
-            % build the modes if we need
-            if t.modes == 0
-                t.modes = zeros(length(idx));
-                t.nmodes = length(idx);
-            end
+        function t = set(t,idx,v,varargin)
+            % Set parameters from input or by using defaults
+            params = inputParser;
+            params.addParameter('bucket',-1,@isscalar);
+            params.addParameter('chainIdx',-1,@isscalar);
+            params.parse(varargin{:});
 
-            % update any mode maxes as needed
-            for m = 1:t.nmodes
-                if t.modes(m) < idx(m)
-                    t.modes(m) = idx(m);
+            % Copy from params object
+            bucket = params.Results.bucket;
+            chainIdx = params.Results.chainIdx;
+
+            if bucket == -1
+                % build the modes if we need
+                if t.modes == 0
+                    t.modes = zeros(length(idx));
+                    t.nmodes = length(idx);
                 end
+
+                % update any mode maxes as needed
+                for m = 1:t.nmodes
+                    if t.modes(m) < idx(m)
+                        t.modes(m) = idx(m);
+                    end
+                end
+
+                % find the index
+                [k, i] = t.search(idx);
+            else
+                k = bucket;
+                i = chainIdx;
             end
-
-            % find the index
-            [k, i] = t.search(idx);
-
             % insert accordingly
             if i == -1
                 if v ~= 0
@@ -203,7 +218,6 @@ classdef htensor
             end
 
         end
-
 
         function [k,i] = search(t, idx)
             %{
@@ -264,6 +278,7 @@ classdef htensor
                 return
             end
         end
+
     
         function v = extract_val(t,idx)
             %{
