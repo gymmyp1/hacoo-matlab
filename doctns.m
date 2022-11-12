@@ -25,7 +25,15 @@ for i = 1:length(files)
     newFileNames{i} = replace(fid1,'txt','mat');
     disp(newFileNames(i))
     fidI = fopen(files(i).name,'r');
-    words{i} = textscan(fidI, '%s');
+    temp = textscan(fidI, '%s');
+    docWords = {};
+    for j=1:length(temp{1})
+        lowerCase = lower(temp{1});
+        if all(isstrprop(lowerCase{j},'alpha'))
+            docWords{end+1} = lowerCase{j};
+        end
+    end
+    words{i} = transpose(docWords);
 end
 
 %for i = 1:length(words)
@@ -38,8 +46,8 @@ end
 % Build raw vocabulary dictionary
 vocab = containers.Map;
 for doc=1:N  %for every doc
-    for i=1:length(words{doc}{1})  %for every word in a doc
-        word = words{doc}{1}{i};
+    for i=1:length(words{doc})  %for every word in a doc
+        word = words{doc}{i};
         if ~isKey(vocab,word) %if word is not in voacb, add it
             vocab(word) = 1;
         else
@@ -99,7 +107,7 @@ wordToIndex = containers.Map(vocabKeys,vocabIndex);
 % construct the document tensors
 for doc=1:N %for every doc
     tns = htensor();
-    curr_doc = words{doc}{1}; %word list for current doc
+    curr_doc = words{doc}; %word list for current doc
     length(curr_doc)
     i = 1;
     limit = length(curr_doc) - ngram;
