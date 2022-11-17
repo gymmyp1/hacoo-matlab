@@ -577,59 +577,93 @@ classdef htensor
             end
         end
 
-        function [subs,vals,bi,li] = retrieve(t, n, start)
-            % Retrieve a n nonzeroes from the table, beginning at start,
-            % which is a tuple containing [bucketIdx, rowIdx]
-            %returns bi, li, which is the location of the last nnz counted
+        function [subs,vals,i,j] = retrieve(t, n, start)
+            % Retrieve n nonzeroes from the table, beginning at start,
+            % which is a tuple containing [bucketIdx, rowIdx]. If an 
+            % element is present at start, then it is included in the 
+            % accumulation array.
             %
-            subs = zeros(n,t.nmodes);
+            % Returns:
+            %   subs - A cell array of subscripts containing n nonzeros
+            %   vals - An array of values corresponding to the subscripts
+            %   i - bucket index of last counted nnz
+            %   j - row index of last counted nnz
+            %
+            subs = cell(n,1);
             vals = zeros(n,1);
 
-            bucketIdx = start(1);
-            rowIdx = start(2);
-
+            bi = start(1);
+            li = start(2);
+            nctr = 0;
 
             %Accumulate nonzero indexes and values until we reach n
-            for i = 1:n
-                [bi,li] = next_nnz([bucketIdx,rowIdx]);
-                subs(i) = t.table{bi}{li,1};
-                vals(i) = t.table{bi}{li,2};
-                bucketIdx = bi;
-                rowIdx = li;
+            for i = bi:t.nbuckets
+                if isempty(t.table{bi})
+                    continue
+                else
+
+                    for j = li:size(t.table{i},1)
+                        subs(nctr+1) = t.table{i}(j);
+                        vals(nctr+1) = t.table{i}{j,2};
+                        nctr = nctr+1;
+
+                        if nctr == n
+                            return
+                        end
+                    end 
+                end
+                li = 1;
             end
 
         end %end function
 
         function [bi, li] = next_nnz(t,startBucket,startRow)
             % Return the location of next nonzero entry.
-            % Does not include the element, if there is one, at 
+            % Does not include the element, if there is one, at
             % startBucket,startRow.
 
             bi = startBucket;
             li = startRow;
-
-            if bi > t.nbuckets
-                bi = 0;
-                li = 0;
-                return
-            end
-
             
-            while t.bi < t.nbuckets
-                if isempty(t.table{bi})
-                    bi = bi + 1;
-                    continue
+            %check if anything is occupying the first bucket
+            if bi == 0 && li == 0
+                bi = 1;
+                li = 1;
+                if ~isempty(t.table{bi})
+                    return
                 end
-
-                li = li + 1;
-
-                %Are we at the end of the list?
-                if li == size(t.table{bi},2)
-                    li = 1;
-                    bi = bi + 1;
-                end
-
             end
+
+            li = li +1;
+            %else continue checking for next entry in the table
+            while bi < t.nbuckets
+                %check if we've reached the end
+                if bi == t.nbuckets && isempty(t.table{bi}) || bi == t.nbuckets && li == size(t.table{bi},2)
+                    bi = -1;
+                    li = -1;
+                    return
+                end
+
+                %Check if we're currently in an empty bucket
+                if isempty(t.table{bi})
+                    bi = bi+1;
+                    continue
+                else
+                    return
+                end
+                
+
+                %check if we've reached the end of that bucket
+                if li > size(t.table{bi},2)
+                    bi = bi + 1;
+                    li = 1;
+                else
+                    %return next entry in bucket
+                    li = li+1;
+                    return
+                end
+            end
+
         end
 
         % Function to print all nonzero elements stored in the tensor.
