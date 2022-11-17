@@ -1,7 +1,7 @@
 %File to check HaCOO COO MTTKRP function.
 
-%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
-addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
+addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
+%addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
 
 %file = 'ubertrim_hacoo.mat';
@@ -46,7 +46,8 @@ htns_ans = {};
 tt_ans = {};
 
 for n = 1:T.nmodes
-    htns_ans{end+1} = htns_coo_mttkrp(T,tsubs,tvals,U,n); %<--matricize with respect to dimension n.
+    %htns_ans{end+1} = htns_coo_mttkrp(T,tsubs,tvals,U,n); %<--matricize with respect to dimension n.
+    htns_ans{end+1} = htns_coo_mttkrp(T,U,n); %<--matricize with respect to dimension n.
 end
 
 for n = 1:T.nmodes

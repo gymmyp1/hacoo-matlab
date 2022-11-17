@@ -513,14 +513,11 @@ classdef htensor
                         nzctr = min(nz,nzctr1+nzchunk);
 
                         % ----
+                        [subs,vals,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1,[startBucket,startRow])
                         Vexp = repmat(vals(nzctr1:nzctr),1,rlen);
                         for k = [1:n-1, n+1:d]
                             Ak = U{k};
 
-                            %retrieve nzctr non-zeroes from the table
-                            [subs,vals,stopBucket,stopRow] = t.retrieve(nzctr-nzctr1,[startBucket,startRow])
-                            %
-                            %Akexp = Ak(subs(nzctr1:nzctr,k),rctr1:rctr);
                             Akexp = Ak(subs(nzctr1:nzctr,k),rctr1:rctr);
                             Vexp = Vexp .* Akexp;
 
@@ -543,14 +540,19 @@ classdef htensor
 
                 V = zeros(nn,R);
                 nzctr = 0;
+                startBucket = 1;
+                startRow = 1;
                 while (nzctr < nz)
 
                     % Process nonzero range from nzctr1 to nzctr
                     nzctr1 = nzctr+1;
                     nzctr = min(nz,nzctr1+nzchunk);
-
+                    disp(nzctr1-nzctr)
                     rctr = 0;
-                    Xvals = vals(nzctr1:nzctr);
+                    %Xvals = vals(nzctr1:nzctr);
+                    [subs,vals,i,j] = t.retrieve(nzctr1-nzctr,[startBucket,startRow]);
+                    startBucket = i;
+                    startRow = j+1;
                     while (rctr < R)
 
                         % Process r range from rctr1 to rctr (columns of factor matrices)
@@ -559,7 +561,7 @@ classdef htensor
                         rlen = rctr - rctr1 + 1;
 
                         % ----
-                        Vexp = repmat(Xvals,1,rlen);
+                        Vexp = repmat(vals,1,rlen);
                         for k = [1:n-1, n+1:d]
                             Ak = U{k};
                             Akexp = Ak(subs(nzctr1:nzctr,k),rctr1:rctr);
@@ -589,7 +591,7 @@ classdef htensor
             %   i - bucket index of last counted nnz
             %   j - row index of last counted nnz
             %
-            subs = cell(n,1);
+            subs = zeros(n,t.nmodes);
             vals = zeros(n,1);
 
             bi = start(1);
@@ -603,7 +605,7 @@ classdef htensor
                 else
 
                     for j = li:size(t.table{i},1)
-                        subs(nctr+1) = t.table{i}(j);
+                        subs(nctr+1,:) = t.table{i}{j};
                         vals(nctr+1) = t.table{i}{j,2};
                         nctr = nctr+1;
 
@@ -616,55 +618,6 @@ classdef htensor
             end
 
         end %end function
-
-        function [bi, li] = next_nnz(t,startBucket,startRow)
-            % Return the location of next nonzero entry.
-            % Does not include the element, if there is one, at
-            % startBucket,startRow.
-
-            bi = startBucket;
-            li = startRow;
-            
-            %check if anything is occupying the first bucket
-            if bi == 0 && li == 0
-                bi = 1;
-                li = 1;
-                if ~isempty(t.table{bi})
-                    return
-                end
-            end
-
-            li = li +1;
-            %else continue checking for next entry in the table
-            while bi < t.nbuckets
-                %check if we've reached the end
-                if bi == t.nbuckets && isempty(t.table{bi}) || bi == t.nbuckets && li == size(t.table{bi},2)
-                    bi = -1;
-                    li = -1;
-                    return
-                end
-
-                %Check if we're currently in an empty bucket
-                if isempty(t.table{bi})
-                    bi = bi+1;
-                    continue
-                else
-                    return
-                end
-                
-
-                %check if we've reached the end of that bucket
-                if li > size(t.table{bi},2)
-                    bi = bi + 1;
-                    li = 1;
-                else
-                    %return next entry in bucket
-                    li = li+1;
-                    return
-                end
-            end
-
-        end
 
         % Function to print all nonzero elements stored in the tensor.
         function display_htns(t)
