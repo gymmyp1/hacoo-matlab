@@ -113,8 +113,7 @@ classdef htensor
             for i = 1:size(idx,1)
                 k = keys(i);
                 v = vals(i);
-                si = idx(i,:); %changing to explicitly storing index as is
-                %si = morton_encode(idx(i,:)); %<-- store the morton code
+                si = idx(i,:); %Store index as is
                 
                 %check if any keys are equal to 0, due to matlab indexing
                 if k < 1
@@ -123,7 +122,6 @@ classdef htensor
 
                 % We already have the index and key, insert accordingly
                 if v ~= 0
-                    %t.table{k}{end+1} = node(si, v);
                     %if the slot is empty, create a new entry
                     if(isempty(t.table{k}))
                         t.table{k} = {si v};
@@ -391,7 +389,7 @@ classdef htensor
             end
         end
 
-        function V = htns_coo_mttkrp(X,subs,vals,U,n,nzchunk,rchunk,ver)
+        function V = htns_coo_mttkrp(X,U,n,nzchunk,rchunk,ver)
             %MTTKRP Matricized tensor times Khatri-Rao product for sparse tensor.
             %   This has been adapted to use sub and val matrices extracted from
             %   a HaCOO/htensor.
@@ -475,7 +473,7 @@ classdef htensor
             end
 
 
-            if ver == 0 % OLD WAY
+            if ver == 0 % OLD WAY (original tensor toolbox function)
 
                 V = zeros(size(X,n),R);
 
@@ -489,13 +487,14 @@ classdef htensor
                     V(:,r) = double(ttv(X, Z, -n));
                 end
 
-            elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH
+            elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH- retrieves directly from table.
                 %fprintf("Using new chunked approach.\n")
 
                 nz = X.hash_curr_size;
                 d = N;
                 nn = X.modes(n);
-                %nn = size(X,n);
+                startBucket = 1;
+                startRow = 1;
 
                 V = zeros(nn,R);
                 rctr = 0;
@@ -517,8 +516,16 @@ classdef htensor
                         Vexp = repmat(vals(nzctr1:nzctr),1,rlen);
                         for k = [1:n-1, n+1:d]
                             Ak = U{k};
+
+                            %retrieve nzctr non-zeroes from the table
+                            [subs,vals,stopBucket,stopRow] = t.retrieve(nzctr-nzctr1,[startBucket,startRow])
+                            %
+                            %Akexp = Ak(subs(nzctr1:nzctr,k),rctr1:rctr);
                             Akexp = Ak(subs(nzctr1:nzctr,k),rctr1:rctr);
                             Vexp = Vexp .* Akexp;
+
+                            startBucket = stopBucket;
+                            startRow = stopRow;
                         end
                         for j = rctr1:rctr
                             vj = accumarray(subs(nzctr1:nzctr,n), Vexp(:,j-rctr1+1), [nn 1]);
@@ -570,6 +577,60 @@ classdef htensor
             end
         end
 
+        function [subs,vals,bi,li] = retrieve(t, n, start)
+            % Retrieve a n nonzeroes from the table, beginning at start,
+            % which is a tuple containing [bucketIdx, rowIdx]
+            %returns bi, li, which is the location of the last nnz counted
+            %
+            subs = zeros(n,t.nmodes);
+            vals = zeros(n,1);
+
+            bucketIdx = start(1);
+            rowIdx = start(2);
+
+
+            %Accumulate nonzero indexes and values until we reach n
+            for i = 1:n
+                [bi,li] = next_nnz([bucketIdx,rowIdx]);
+                subs(i) = t.table{bi}{li,1};
+                vals(i) = t.table{bi}{li,2};
+                bucketIdx = bi;
+                rowIdx = li;
+            end
+
+        end %end function
+
+        function [bi, li] = next_nnz(t,startBucket,startRow)
+            % Return the location of next nonzero entry.
+            % Does not include the element, if there is one, at 
+            % startBucket,startRow.
+
+            bi = startBucket;
+            li = startRow;
+
+            if bi > t.nbuckets
+                bi = 0;
+                li = 0;
+                return
+            end
+
+            
+            while t.bi < t.nbuckets
+                if isempty(t.table{bi})
+                    bi = bi + 1;
+                    continue
+                end
+
+                li = li + 1;
+
+                %Are we at the end of the list?
+                if li == size(t.table{bi},2)
+                    li = 1;
+                    bi = bi + 1;
+                end
+
+            end
+        end
 
         % Function to print all nonzero elements stored in the tensor.
         function display_htns(t)

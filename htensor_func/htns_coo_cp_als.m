@@ -144,6 +144,7 @@ else
         for n = dimorder(1:end)
             
             % Calculate Unew = X_(n) * khatrirao(all U except n, 'r').
+            %Unew = htns_coo_mttkrp(T,tsubs,tvals,U,n); %changed to HaCOO mttkrp
             Unew = htns_coo_mttkrp(T,tsubs,tvals,U,n); %changed to HaCOO mttkrp
             % Save the last MTTKRP result for fitness check.
             if n == dimorder(end)
