@@ -52,12 +52,11 @@ T = X;
 % Retrieve all indexes and vals from the HaCOO tensor
 tsubs = T.all_subs();
 tvals = T.all_vals();
-%% Temporary: create a duplicate sptensor until innerprod with HaCOO and
-% ktensor is implemented.
-X = sptensor(tsubs,tvals);
+%% Temporary: create a duplicate sptensor until innerprod with HaCOO and ktensor is implemented.
+%X = sptensor(tsubs,tvals);
 %% Extract number of dimensions and norm of T.
-N = T.nmodes;
-normX = htns_norm(T);
+N = X.nmodes;
+normX = htns_norm(X);
 
 %% Set algorithm parameters from input or by using defaults
 params = inputParser;
@@ -85,7 +84,7 @@ if iscell(init)
         error('OPTS.init does not have %d cells',N);
     end
     for n = dimorder(2:end)
-        if ~isequal(size(Uinit{n}),[size(X,n) R])
+        if ~isequal(size(Uinit{n}),[X.modes(n) R])
             error('OPTS.init{%d} is the wrong size',n);
         end
     end
@@ -96,7 +95,7 @@ else
     if strcmp(init,'random')
         Uinit = cell(N,1);
         for n = dimorder(2:end)
-            Uinit{n} = rand(size(X,n),R);
+            Uinit{n} = rand(X.modes(n),R);
         end
     elseif strcmp(init,'nvecs') || strcmp(init,'eigs') 
         Uinit = cell(N,1);
@@ -113,7 +112,7 @@ U = Uinit;
 fit = 0;
 
 % Store the last MTTKRP result to accelerate fitness computation.
-U_mttkrp = zeros(size(T, dimorder(end)), R);
+U_mttkrp = zeros(X.modes(dimorder(end)), R);
 
 if printitn>0
   fprintf('\nCP_ALS:\n');
@@ -144,8 +143,7 @@ else
         for n = dimorder(1:end)
             
             % Calculate Unew = X_(n) * khatrirao(all U except n, 'r').
-            %Unew = htns_coo_mttkrp(T,tsubs,tvals,U,n); %changed to HaCOO mttkrp
-            Unew = htns_coo_mttkrp(T,tsubs,tvals,U,n); %changed to HaCOO mttkrp
+            Unew = X.htns_coo_mttkrp(U,n); %changed to HaCOO mttkrp
             % Save the last MTTKRP result for fitness check.
             if n == dimorder(end)
               U_mttkrp = Unew;
@@ -176,7 +174,7 @@ else
         % This is equivalent to innerprod(X,P).
         %iprod = sum(sum(P.U{dimorder(end)} .* U_mttkrp) .* lambda');
         %iprod = innerprod(X,P);
-        iprod = htns_ktns_innerprod(T,P); %HaCOO and ktersor innerprod
+        iprod = htns_ktns_innerprod(P,X); %HaCOO and ktersor innerprod
         
         if normX == 0
             fit = norm(P)^2 - 2 * iprod;
@@ -216,9 +214,9 @@ end
 
 if printitn>0
     if normX == 0
-        fit = norm(P)^2 - 2 * innerprod(X,P);
+        fit = norm(P)^2 - 2 * htns_ktns_innerprod(X,P);
     else
-        normresidual = sqrt( normX^2 + norm(P)^2 - 2 * innerprod(X,P) );
+        normresidual = sqrt( normX^2 + norm(P)^2 - 2 * htns_ktns_innerprod(P,X) );
         fit = 1 - (normresidual / normX); %fraction explained by model
     end
   fprintf(' Final f = %e \n', fit);

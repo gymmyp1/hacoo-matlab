@@ -516,6 +516,9 @@ classdef htensor
                         Vexp = repmat(vals(:),1,rlen);
                         for k = [1:n-1, n+1:d]
                             Ak = U{k};
+                            %subs(:,k)
+                            %Ak(subs(:,k),rctr1:rctr)
+                            %rctr1:rctr
                             Akexp = Ak(subs(:,k),rctr1:rctr);
                             Vexp = Vexp .* Akexp;
                         end
@@ -546,7 +549,6 @@ classdef htensor
                     nzctr1 = nzctr+1;
                     nzctr = min(nz,nzctr1+nzchunk);
                     rctr = 0;
-                    %Xvals = vals(nzctr1:nzctr);
                     [subs,vals,i,j] = t.retrieve(nzctr1-nzctr,[startBucket,startRow]);
                     startBucket = i;
                     startRow = j+1;
@@ -576,7 +578,7 @@ classdef htensor
             end
         end
 
-        function [subs,vals,i,j] = retrieve(t, n, start)
+        function [subs,vals,bi,li] = retrieve(t, n, start)
             % Retrieve n nonzeroes from the table, beginning at start,
             % which is a tuple containing [bucketIdx, rowIdx]. If an 
             % element is present at start, then it is included in the 
@@ -585,8 +587,8 @@ classdef htensor
             % Returns:
             %   subs - A cell array of subscripts containing n nonzeros
             %   vals - An array of values corresponding to the subscripts
-            %   i - bucket index of last counted nnz
-            %   j - row index of last counted nnz
+            %   bi - bucket index of last counted nnz
+            %   li - row index of last counted nnz
             %
             subs = zeros(n,t.nmodes);
             vals = zeros(n,1);
@@ -596,23 +598,28 @@ classdef htensor
             nctr = 0;
 
             %Accumulate nonzero indexes and values until we reach n
-            for i = bi:t.nbuckets
+            while bi < t.nbuckets
                 if isempty(t.table{bi})
+                    bi = bi+1;
                     continue
                 else
-
-                    for j = li:size(t.table{i},1)
-                        subs(nctr+1,:) = t.table{i}{j};
-                        vals(nctr+1) = t.table{i}{j,2};
+                    while li <= size(t.table{bi},1)
+                        subs(nctr+1,:) = t.table{bi}{li};
+                        vals(nctr+1) = t.table{bi}{li,2};
                         nctr = nctr+1;
-
+                        li = li+1;
                         if nctr == n
                             return
                         end
-                    end 
+                    end
                 end
                 li = 1;
+                bi = bi+1;
             end
+
+            %Remove any remaining rows of 0s on the last chunk, if possible.
+            subs = subs(1:nctr,:);
+            vals = vals(1:nctr,:);
 
         end %end function
 
@@ -634,6 +641,6 @@ classdef htensor
             t = t.hash_init(t,nbuckets);
         end
 
-        %end of methods
-    end
-end
+        
+    end %end of methods
+end %end class
