@@ -3,15 +3,15 @@
 %addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
-%file = 'y.txt';
-%T = read_htns(file); %<--HaCOO htensor
+file = 'y.txt';
+T = read_htns(file); %<--HaCOO htensor
 
-file = 'ubertrim_hacoo.mat';
-T = load_htns(file);
+%file = 'ubertrim_hacoo.mat';
+%T = load_htns(file);
 
 %set up Tensor Toolbox sptensor
-%table = readtable(file);
-table = readtable('uber_trim.txt');
+table = readtable(file);
+%table = readtable('uber_trim.txt');
 idx = table(:,1:end-1);
 vals = table(:,end);
 idx = table2array(idx);
@@ -33,24 +33,19 @@ end
 
 U = Uinit;
 
-%Error check
-%if (length(U) ~= N)
-%    error('Cell array is the wrong length');
-%end
-
 %set up answers array
 htns_ans = {};
 tt_ans = {};
 
 for n = 1:T.nmodes
-    htns_ans{end+1} = htns_mttkrp(T,U,n); %<--matricize with respect to dimension n.
+    htns_ans{end+1} = T.htns_coo_mttkrp(U,n); %<--matricize with respect to dimension n.
 end
 
 for n = 1:T.nmodes
     tt_ans{end+1} = mttkrp(X,U,n); %<--matricize with respect to dimension i.
 end
 
-%{
+
 %check if answers match
 for i = 1:length(htns_ans)
 
@@ -58,10 +53,9 @@ for i = 1:length(htns_ans)
         fprintf("solutions match.\n");
     else 
         fprintf("solution does not match.\n");
-        %fprintf("hacoo mttkrp ans: \n");
-        %disp(htns_ans{i});
-        %fprintf("tensor toolbox mttkrp ans: \n");
-        %disp(tt_ans{i});
+        fprintf("hacoo mttkrp ans: \n");
+        disp(htns_ans{i});
+        fprintf("tensor toolbox mttkrp ans: \n");
+        disp(tt_ans{i});
     end
 end
-%}

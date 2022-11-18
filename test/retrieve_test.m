@@ -1,7 +1,7 @@
 %Driver code for testing the retrieve() function.
 
-addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
-%addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
+%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
+addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
 file = 'y.txt';
 
@@ -13,8 +13,8 @@ startRow = 1;
 [subs,vals,i,j] = t.retrieve(4,[startBucket,startRow]);
 disp(subs)
 startBucket = i;
-startRow = j;
+startRow = j+1;
 
-[subs,vals,i,j] = t.retrieve(4,[startBucket,startRow+1]);
+[subs,vals,i,j] = t.retrieve(4,[startBucket,startRow]);
 disp(subs)
 

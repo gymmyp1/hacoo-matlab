@@ -509,27 +509,26 @@ classdef htensor
                     while (nzctr < nz)
 
                         % Process nonzero range from nzctr1 to nzctr
-                        nzctr1 = nzctr+1;
-                        nzctr = min(nz,nzctr1+nzchunk);
-
+                        nzctr1 = nzctr+1
+                        nzctr = min(nz,nzctr1+nzchunk)
                         % ----
-                        [subs,vals,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1,[startBucket,startRow])
-                        Vexp = repmat(vals(nzctr1:nzctr),1,rlen);
+                        [subs,vals,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1,[startBucket,startRow]);
+                        subs;
+                        Vexp = repmat(vals(:),1,rlen);
                         for k = [1:n-1, n+1:d]
                             Ak = U{k};
 
-                            Akexp = Ak(subs(nzctr1:nzctr,k),rctr1:rctr);
+                            Akexp = Ak(subs(:,k),rctr1:rctr);
                             Vexp = Vexp .* Akexp;
-
-                            startBucket = stopBucket;
-                            startRow = stopRow;
                         end
                         for j = rctr1:rctr
-                            vj = accumarray(subs(nzctr1:nzctr,n), Vexp(:,j-rctr1+1), [nn 1]);
+                            vj = accumarray(subs(:,n), Vexp(:,j-rctr1+1), [nn 1]);
                             V(:,j) = V(:,j) + vj;
                         end
+                        startBucket = stopBucket;
+                        startRow = stopRow+1; %since we want to get the next nnz past where we stopped previously
                         % ----
-                    end
+                    end     
                 end
 
             elseif ver == 2 % 'CHUNKED' SWAPPING R & NZ CHUNKS
@@ -547,7 +546,6 @@ classdef htensor
                     % Process nonzero range from nzctr1 to nzctr
                     nzctr1 = nzctr+1;
                     nzctr = min(nz,nzctr1+nzchunk);
-                    disp(nzctr1-nzctr)
                     rctr = 0;
                     %Xvals = vals(nzctr1:nzctr);
                     [subs,vals,i,j] = t.retrieve(nzctr1-nzctr,[startBucket,startRow]);
