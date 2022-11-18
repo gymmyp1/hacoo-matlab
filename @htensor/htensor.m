@@ -472,8 +472,8 @@ classdef htensor
                 end
             end
 
-
-            if ver == 0 % OLD WAY (original tensor toolbox function)
+            %This has not been changed from TT
+            if ver == 0 % OLD WAY
 
                 V = zeros(size(X,n),R);
 
@@ -509,15 +509,13 @@ classdef htensor
                     while (nzctr < nz)
 
                         % Process nonzero range from nzctr1 to nzctr
-                        nzctr1 = nzctr+1
-                        nzctr = min(nz,nzctr1+nzchunk)
+                        nzctr1 = nzctr+1;
+                        nzctr = min(nz,nzctr1+nzchunk);
                         % ----
-                        [subs,vals,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1,[startBucket,startRow]);
-                        subs;
+                        [subs,vals,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,[startBucket,startRow]);
                         Vexp = repmat(vals(:),1,rlen);
                         for k = [1:n-1, n+1:d]
                             Ak = U{k};
-
                             Akexp = Ak(subs(:,k),rctr1:rctr);
                             Vexp = Vexp .* Akexp;
                         end
@@ -531,6 +529,7 @@ classdef htensor
                     end     
                 end
 
+            %This has not been changed from TT
             elseif ver == 2 % 'CHUNKED' SWAPPING R & NZ CHUNKS
 
                 nz = nnz(X);
