@@ -96,8 +96,8 @@ classdef htensor
             %{
 		Set a list of subscripts and values in the sparse tensor hash table.
 		Parameters:
-			subs - Table of nonzero subscripts
-            vals - Table of nonzero tensor values
+			subs - Array of nonzero subscripts
+            vals - Array of nonzero tensor values
 		Returns:
 			A hacoo data type with a populated hash table.
             %}
@@ -107,7 +107,26 @@ classdef htensor
 
             % hash indexes for the hash keys
             keys = arrayfun(@t.hash, summed_idx);
+            keys = keys';
+            %replace any keys equal to 0 to 1 b/c of MATLAB indexing
+            keys(keys==0) = 1;
 
+            uniqueKeys = unique(keys);
+
+            for i = 1:length(uniqueKeys)
+                idxLoc  = find(keys == uniqueKeys(i));
+                chunk = idx(idxLoc,:);
+                t.table{uniqueKeys(i)} = {chunk vals(idxLoc)};
+                
+                depth = length(idxLoc);
+                if depth > t.max_chain_depth
+                    t.max_chain_depth = depth;
+                end
+                t.hash_curr_size = t.hash_curr_size + depth;
+
+            end
+
+            %{
             %Set everything in the table
             prog = 0;
             for i = 1:size(idx,1)
@@ -143,6 +162,8 @@ classdef htensor
                     disp(prog);
                 end
             end
+            %}
+
         end
 
 
