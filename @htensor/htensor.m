@@ -108,6 +108,7 @@ classdef htensor
             % hash indexes for the hash keys
             keys = arrayfun(@t.hash, summed_idx);
             keys = keys';
+            
             %replace any keys equal to 0 to 1 b/c of MATLAB indexing
             keys(keys==0) = 1;
 
@@ -266,7 +267,7 @@ classdef htensor
             %attempt to find item in that bubcket's chain
             %fprintf('searching within chain\n');
             for i = 1:size(t.table{k},1)
-                if t.table{k}{i} == idx
+                if t.table{k}{1}(i,:) == idx
                     %return i
                     return
                 end
@@ -275,24 +276,25 @@ classdef htensor
             i = -1;
         end
 
+        %as of now this does the same thing as extract_val()...
         function item = get(t, i)
             %{
-		Retrieve a tensor index. 
+		Retrieve a tensor value.
 		Parameters:
 			t - The tensor
             i - The tensor index to retrieve
 		Returns:
-            item - matrix of [idx,val] if found, 0.0 if not found 
+            item - the value at index i if found, 0.0 if not found 
             %}
 
             [k,j] = t.search(i);
 
             if j ~= -1
-                %fprintf("item found");
-                item = t.table{k}{j,:};
+                fprintf("item found");
+                item = t.table{k}{2}(j);
                 return
             else
-                %fprintf("item not found");
+                fprintf("item not found");
                 item = 0.0;
                 return
             end
@@ -311,7 +313,7 @@ classdef htensor
             [k,j] = t.search(idx);
 
             if j ~= -1
-                v = t.table{k}{j,2};
+                v = t.table{k}{2}(j);
                 return
             else
                 v = 0.0;
@@ -369,7 +371,8 @@ classdef htensor
             if j ~= -1 %<-- we located the index successfully
                 fprintf("Deleting entry: ");
                 disp(i);
-                t.table{k}(j,:) = []; %delete the row
+                t.table{k}{1}(j,:) = []; %delete the row in the index cell array
+                t.table{k}{2}(j) = []; %delete the row in the value array
             else
                 fprintf("Could not remove nonzero entry.\n");
                 return
@@ -380,15 +383,19 @@ classdef htensor
         % in the HaCOO sparse tensor t.
         function res = all_subs(t)
             res = zeros(t.hash_curr_size,t.nmodes); %<-- preallocate matrix
-            num_entries = 1;
+            cnt = 1;
             for i = 1:t.nbuckets
                 if isempty(t.table{i})  %<-- skip bucket if empty
                     continue
                 else
-                    for j = 1:size(t.table{i},1)
-                        res(num_entries,:) = t.table{i}{j};
-                        num_entries = num_entries + 1;
+                    len = size(t.table{i}{1},1);
+                    if len == 1
+                        %Just copy over that 1 row
+                        res(cnt,:) = t.table{i}{1};
+                    else
+                        res(cnt:cnt+len-1,:) = t.table{i}{1};
                     end
+                    cnt = cnt + len;
                 end
             end
         end
@@ -397,15 +404,19 @@ classdef htensor
         %Returns an array 'res' containing all nonzeroes in the sparse tensor.
         function res = all_vals(t)
             res = zeros(t.hash_curr_size,1); %<-- preallocate matrix
-            num_entries = 1;
+            cnt = 1;
             for i = 1:t.nbuckets
                 if isempty(t.table{i})  %<-- skip bucket if empty
                     continue
                 else
-                    for j = 1:size(t.table{i},1)
-                        res(num_entries) = t.table{i}{j,2};
-                        num_entries = num_entries + 1;
+                    len = length(t.table{i}{2});
+                    if len == 1
+                        %Just copy over that 1 row
+                        res(cnt) = t.table{i}{2};
+                    else
+                        res(cnt:cnt+len-1) = t.table{i}{2};
                     end
+                    cnt = cnt + len;
                 end
             end
         end
@@ -624,9 +635,9 @@ classdef htensor
                     bi = bi+1;
                     continue
                 else
-                    while li <= size(t.table{bi},1)
-                        subs(nctr+1,:) = t.table{bi}{li};
-                        vals(nctr+1) = t.table{bi}{li,2};
+                    while li <= size(t.table{bi}{1},1)
+                        subs(nctr+1,:) = t.table{bi}{1}(li,:);
+                        vals(nctr+1) = t.table{bi}{2}(li);
                         nctr = nctr+1;
                         li = li+1;
                         if nctr == n
@@ -652,7 +663,13 @@ classdef htensor
                 if isempty(t.table{i})
                     continue
                 else
-                    disp(t.table{i});
+                    %This needs to be cleaned up
+                    if size(t.table{i}{1},1) == 1
+                        disp(t.table{i});
+                    else
+                        disp(t.table{i}{1})
+                        disp(t.table{i}{2})
+                    end
                 end
             end
         end
