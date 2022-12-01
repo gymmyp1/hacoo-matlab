@@ -9,7 +9,9 @@ tic
 %writeTns('uber_trim.txt')
 %writeTns('uber.txt')
 %writeTns('chicago.txt')
-writeTns('enron.txt')
+%writeTns('enron.txt')
+%writeTns('nips.txt')
+writeTns('nell-2.txt')
 
 toc
 
