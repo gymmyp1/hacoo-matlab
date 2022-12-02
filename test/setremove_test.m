@@ -14,8 +14,8 @@ t.display_htns()
 
 %t = t.remove([1 1 1]);
 %t = t.remove([2 1 1]);
-t = t.remove([1 2 1]);
+%t = t.remove([1 2 1]);
 
-t.display_htns()
+%t.display_htns()
 
 toc

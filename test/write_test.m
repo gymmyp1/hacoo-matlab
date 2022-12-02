@@ -16,7 +16,7 @@ writeTns('nell-2.txt')
 toc
 
 function writeTns(file)
-    fprintf("Saving tensor to file...\n");
+    fprintf("Saving tensor %s to file...\n", file);
     t = read_htns(file);
 
     newStr = erase(file,".txt");

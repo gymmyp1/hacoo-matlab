@@ -188,20 +188,20 @@ classdef htensor
             bucket = params.Results.bucket;
             chainIdx = params.Results.chainIdx;
 
+            % build the modes if we need to
+            if t.nmodes == 0
+                t.modes = zeros(length(idx));
+                t.nmodes = length(idx);
+            end
+
+            % update any mode maxes as needed
+            for m = 1:t.nmodes
+                if t.modes(m) < idx(m)
+                    t.modes(m) = idx(m);
+                end
+            end
+
             if bucket == -1
-                % build the modes if we need
-                if t.modes == 0
-                    t.modes = zeros(length(idx));
-                    t.nmodes = length(idx);
-                end
-
-                % update any mode maxes as needed
-                for m = 1:t.nmodes
-                    if t.modes(m) < idx(m)
-                        t.modes(m) = idx(m);
-                    end
-                end
-
                 % find the index
                 [k, i] = t.search(idx);
             else
@@ -237,6 +237,7 @@ classdef htensor
                 t = t.rehash();
             end
 
+            return;
         end
 
         function [k,i] = search(t, idx)
@@ -262,17 +263,16 @@ classdef htensor
             if isempty(t.table{k})
                 i = -1;
                 return
-            end
+            else
 
-            %attempt to find item in that bubcket's chain
-            %fprintf('searching within chain\n');
-            for i = 1:size(t.table{k},1)
-                if t.table{k}{1}(i,:) == idx
-                    %return i
-                    return
+                %attempt to find item in that bubcket's chain
+                %fprintf('searching within chain\n');
+                for i = 1:size(t.table{k}{1},1)
+                    if t.table{k}{1}(i,:) == idx
+                        return
+                    end
                 end
             end
-    
             i = -1;
         end
 
@@ -290,11 +290,11 @@ classdef htensor
             [k,j] = t.search(i);
 
             if j ~= -1
-                fprintf("item found");
+                %fprintf("item found.\n");
                 item = t.table{k}{2}(j);
                 return
             else
-                fprintf("item not found");
+                %fprintf("item not found.\n");
                 item = 0.0;
                 return
             end
@@ -383,6 +383,7 @@ classdef htensor
         % in the HaCOO sparse tensor t.
         function res = all_subs(t)
             res = zeros(t.hash_curr_size,t.nmodes); %<-- preallocate matrix
+            t.nmodes
             cnt = 1;
             for i = 1:t.nbuckets
                 if isempty(t.table{i})  %<-- skip bucket if empty
