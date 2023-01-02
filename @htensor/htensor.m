@@ -229,8 +229,8 @@ classdef htensor
                 return
             end
 
-            fprintf("Nonzero entry has been set: ");
-            disp(idx);
+            %fprintf("Nonzero entry has been set: ");
+            %disp(idx);
 
             % Check if we need to rehash
             if((t.hash_curr_size/t.nbuckets) > t.load_factor)

@@ -24,5 +24,5 @@ function write_htns(t,file)
     M{4} = t.max_chain_depth;
     M{5} = t.load_factor;
     
-    save(file,'T','M');
+    save(file,'T','M','-v7.3'); %adding version to save large files
 end
