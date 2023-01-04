@@ -3,7 +3,7 @@ function doctns(varargin)
 params = inputParser;
 params.addParameter('vocabFile','vocabulary',@isstring);
 params.addParameter('freqFile','@',@isstring);
-params.addParameter('constraint',600,@isscalar);
+params.addParameter('constraint',10e4,@isscalar);
 params.addParameter('ngram',3,@isscalar);
 params.parse(varargin{:});
 

@@ -346,7 +346,7 @@ classdef htensor
         % Returns:
         %       r - new HaCOO tensor with rehashed entries
         function new = rehash(t)
-            fprintf("Rehashing...\n");
+            %fprintf("Rehashing...\n");
 
             %gather all existing subscripts and vals into arrays
             indexes = t.all_subs();
@@ -355,7 +355,7 @@ classdef htensor
             %Create new tensor, constructor will fill new values into table
             new = htensor(indexes,vals);
 
-            fprintf("Done rehashing,\n");
+            %fprintf("Done rehashing,\n");
         end
 
         % Remove a nonzero entry.
@@ -370,7 +370,7 @@ classdef htensor
 
             if j ~= -1 %<-- we located the index successfully
                 fprintf("Deleting entry: ");
-                disp(i);
+                %disp(i);
                 t.table{k}{1}(j,:) = []; %delete the row in the index cell array
                 t.table{k}{2}(j) = []; %delete the row in the value array
             else
@@ -383,7 +383,6 @@ classdef htensor
         % in the HaCOO sparse tensor t.
         function res = all_subs(t)
             res = zeros(t.hash_curr_size,t.nmodes); %<-- preallocate matrix
-            t.nmodes
             cnt = 1;
             for i = 1:t.nbuckets
                 if isempty(t.table{i})  %<-- skip bucket if empty
