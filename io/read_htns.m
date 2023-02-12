@@ -9,17 +9,22 @@
 %       idx_1, idx_2,...idx_n val
 
 function t = read_htns(file)
-    
-    %Read as array
-    table = readtable(file);
-    arr = table2array(table);
-    
-    idx = arr(:,1:end-1);
-    vals = arr(:,end);
-    
 
-    %Read as table
-    %stuff here
+%Get the first line using fgetl to figure out how many modes
+opt = {'Delimiter',' '};
+fid = fopen(file,'rt');
+hdr = fgetl(fid);
+num = numel(regexp(hdr,' ','split'));
+fmt = repmat('%d',1,num);
+sizeA = [num Inf];
+tdata = fscanf(fid,fmt,sizeA);
+tdata = tdata';
 
-    t = htensor(idx,vals);
+fclose(fid);
+
+idx = tdata(:,1:num-1);
+vals = tdata(:,end);
+
+t = htensor(idx,vals);
+
 end

@@ -52,7 +52,6 @@ classdef htensor
                     idx = varargin{1};
                     vals = varargin{2};
 
-                    %t.modes =  max(idx{:,:}); <-- if input is a table
                     t.modes = max(idx); %<-- if input is an array
                     t.nmodes = length(t.modes);
 
@@ -126,44 +125,6 @@ classdef htensor
                 t.hash_curr_size = t.hash_curr_size + depth;
 
             end
-
-            %{
-            %Set everything in the table
-            prog = 0;
-            for i = 1:size(idx,1)
-                k = keys(i);
-                v = vals(i);
-                si = idx(i,:); %Store index as is
-                
-                %check if any keys are equal to 0, due to matlab indexing
-                if k < 1
-                    k = 1;
-                end
-
-                % We already have the index and key, insert accordingly
-                if v ~= 0
-                    %if the slot is empty, create a new entry
-                    if(isempty(t.table{k}))
-                        t.table{k} = {si v};
-                    else
-                        %else concatenate the new entry vertically
-                        % under existing entry
-                        t.table{k} = vertcat(t.table{k},{si v});
-                    end
-                    t.hash_curr_size = t.hash_curr_size + 1;
-                    depth = size(t.table{k},1);
-                    if depth > t.max_chain_depth
-                        t.max_chain_depth = depth;
-                    end
-                else
-                    %remove entry in table
-                end
-                prog = prog + 1;
-                if mod(prog,10000) == 0
-                    disp(prog);
-                end
-            end
-            %}
 
         end
 
