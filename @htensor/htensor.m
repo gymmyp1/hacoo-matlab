@@ -1,5 +1,5 @@
 % HACOO class for sparse tensor storage.
-% Working file 11/4: going to store indexes explicitly
+% Working file 2/15: trying out if storing morton codes impacts speed
 %
 %HACOO methods:
 
@@ -101,12 +101,12 @@ classdef htensor
 			A hacoo data type with a populated hash table.
             %}
 
-            summed_idx = cast(sum(idx,2),'int32');
-            summed_idx = summed_idx';
-
-            % hash indexes for the hash keys
-            keys = arrayfun(@t.hash, summed_idx);
-            keys = keys';
+            %Sum every row
+            S = sum(idx,2);
+            shift1 = arrayfun(@(x) x + bitshift(x,t.sx),S);
+            shift2 = arrayfun(@(x) bitxor(x, bitshift(x,-t.sy)),shift1);
+            shift3 = arrayfun(@(x) x + bitshift(x,t.sz),shift2);
+            keys =  arrayfun(@(x) mod(x,t.nbuckets),shift3);
             
             %replace any keys equal to 0 to 1 b/c of MATLAB indexing
             keys(keys==0) = 1;
@@ -123,9 +123,7 @@ classdef htensor
                     t.max_chain_depth = depth;
                 end
                 t.hash_curr_size = t.hash_curr_size + depth;
-
             end
-
         end
 
 
@@ -135,19 +133,18 @@ classdef htensor
         %       idx - The nonzero index array
         %       v - The nonzero value
         % Optionally -
-        %       skip search step & updating modes if we already know bucket and chain/row index
+        %       update - If index already exists, update its existing
+        %                value by v
         % Returns-
         %       t - the updated tensor
         function t = set(t,idx,v,varargin)
             % Set parameters from input or by using defaults
             params = inputParser;
-            params.addParameter('bucket',-1,@isscalar);
-            params.addParameter('chainIdx',-1,@isscalar);
+            params.addParameter('update',0,@isscalar);
             params.parse(varargin{:});
 
             % Copy from params object
-            bucket = params.Results.bucket;
-            chainIdx = params.Results.chainIdx;
+            update = params.Results.update;
 
             % build the modes if we need to
             if t.nmodes == 0
@@ -162,13 +159,10 @@ classdef htensor
                 end
             end
 
-            if bucket == -1
-                % find the index
-                [k, i] = t.search(idx);
-            else
-                k = bucket;
-                i = chainIdx;
-            end
+
+            % find the index
+            [k, i] = t.search(idx);
+
             % insert accordingly
             if i == -1
                 if v ~= 0
@@ -185,6 +179,8 @@ classdef htensor
                         t.max_chain_depth = depth;
                     end
                 end
+            elseif update
+                %t.table{k}{2}(j) = t.table{k}{2}(j) + v;
             else
                 fprintf("Cannot set entry.\n");
                 return
