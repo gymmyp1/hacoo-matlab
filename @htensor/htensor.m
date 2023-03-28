@@ -64,7 +64,8 @@ classdef htensor
                 otherwise
                     t.modes = 0;   %<-- EMPTY class constructor
                     t.nmodes = 0;
-                    NBUCKETS = 512;
+                    %NBUCKETS = 512;
+                    NBUCKETS = 128;
                     t = hash_init(t,NBUCKETS);
             end
         end
@@ -378,7 +379,7 @@ classdef htensor
             end
         end
 
-        function V = htns_coo_mttkrp(X,U,n,nzchunk,rchunk,ver)
+        function [walltime,cpu_time] = htns_coo_mttkrp(X,U,n,nzchunk,rchunk,ver)
             %MTTKRP Matricized tensor times Khatri-Rao product for sparse tensor.
             %   This has been adapted to use sub and val matrices extracted from
             %   a HaCOO/htensor.
@@ -421,6 +422,8 @@ classdef htensor
             % In the sparse case, we do not want to form the Khatri-Rao product.
 
             N = X.nmodes;
+            walltime = 0;
+            cpu_time = 0;
 
             if isa(U,'ktensor')
                 % Absorb lambda into one of the factors, but not the one that's skipped
@@ -501,8 +504,18 @@ classdef htensor
                         nzctr1 = nzctr+1;
                         nzctr = min(nz,nzctr1+nzchunk);
                         % ----
+                        tic
+                        tStart = cputime;
                         [subs,vals,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,[startBucket,startRow]);
+
+                        %To time retrieval
+                        walltime = walltime + toc;
+                        tEnd = cputime - tStart;
+                        cpu_time = cpu_time + tEnd;
+                        % ----
+
                         Vexp = repmat(vals(:),1,rlen);
+
                         for k = [1:n-1, n+1:d]
                             Ak = U{k};
                             %subs(:,k)
