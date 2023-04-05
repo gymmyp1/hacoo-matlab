@@ -46,7 +46,7 @@ classdef htensor
                     t.load_factor = m{5};
                     t = t.set_hashing_params();
 
-                %Subs and vals specified as arg1 and ag2
+                    %Subs and vals specified as arg1 and ag2
                 case 2
                     %fprintf('creating hacoo tensor with subs and vals initialized\n')
                     idx = varargin{1};
@@ -108,7 +108,7 @@ classdef htensor
             shift2 = arrayfun(@(x) bitxor(x, bitshift(x,-t.sy)),shift1);
             shift3 = arrayfun(@(x) x + bitshift(x,t.sz),shift2);
             keys =  arrayfun(@(x) mod(x,t.nbuckets),shift3);
-            
+
             %replace any keys equal to 0 to 1 b/c of MATLAB indexing
             keys(keys==0) = 1;
 
@@ -118,7 +118,7 @@ classdef htensor
                 idxLoc  = find(keys == uniqueKeys(i));
                 chunk = idx(idxLoc,:);
                 t.table{uniqueKeys(i)} = {chunk vals(idxLoc)};
-                
+
                 depth = length(idxLoc);
                 if depth > t.max_chain_depth
                     t.max_chain_depth = depth;
@@ -258,7 +258,7 @@ classdef htensor
             end
         end
 
-    
+
         function v = extract_val(t,idx)
             %{
 		Retrieve the value of tensor index. 
@@ -379,7 +379,7 @@ classdef htensor
             end
         end
 
-        function [walltime,cpu_time] = htns_coo_mttkrp(X,U,n,nzchunk,rchunk,ver)
+        function V = htns_coo_mttkrp(H,U,n,nzchunk,rchunk,ver)
             %MTTKRP Matricized tensor times Khatri-Rao product for sparse tensor.
             %   This has been adapted to use sub and val matrices extracted from
             %   a HaCOO/htensor.
@@ -421,9 +421,7 @@ classdef htensor
 
             % In the sparse case, we do not want to form the Khatri-Rao product.
 
-            N = X.nmodes;
-            walltime = 0;
-            cpu_time = 0;
+            N = ndims(X);
 
             if isa(U,'ktensor')
                 % Absorb lambda into one of the factors, but not the one that's skipped
@@ -464,7 +462,7 @@ classdef htensor
                 end
             end
 
-            %This has not been changed from TT
+
             if ver == 0 % OLD WAY
 
                 V = zeros(size(X,n),R);
@@ -479,14 +477,11 @@ classdef htensor
                     V(:,r) = double(ttv(X, Z, -n));
                 end
 
-            elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH- retrieves directly from table.
-                %fprintf("Using new chunked approach.\n")
+            elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH
 
-                nz = X.hash_curr_size;
-                d = N;
-                nn = X.modes(n);
-                startBucket = 1;
-                startRow = 1;
+                nz = nnz(X);
+                d = ndims(X);
+                nn = size(X,n);
 
                 V = zeros(nn,R);
                 rctr = 0;
@@ -503,38 +498,22 @@ classdef htensor
                         % Process nonzero range from nzctr1 to nzctr
                         nzctr1 = nzctr+1;
                         nzctr = min(nz,nzctr1+nzchunk);
+
                         % ----
-                        tic
-                        tStart = cputime;
-                        [subs,vals,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,[startBucket,startRow]);
-
-                        %To time retrieval
-                        walltime = walltime + toc;
-                        tEnd = cputime - tStart;
-                        cpu_time = cpu_time + tEnd;
-                        % ----
-
-                        Vexp = repmat(vals(:),1,rlen);
-
+                        Vexp = repmat(X.vals(nzctr1:nzctr),1,rlen);
                         for k = [1:n-1, n+1:d]
                             Ak = U{k};
-                            %subs(:,k)
-                            %Ak(subs(:,k),rctr1:rctr)
-                            %rctr1:rctr
-                            Akexp = Ak(subs(:,k),rctr1:rctr);
+                            Akexp = Ak(X.subs(nzctr1:nzctr,k),rctr1:rctr);
                             Vexp = Vexp .* Akexp;
                         end
                         for j = rctr1:rctr
-                            vj = accumarray(subs(:,n), Vexp(:,j-rctr1+1), [nn 1]);
+                            vj = accumarray(X.subs(nzctr1:nzctr,n), Vexp(:,j-rctr1+1), [nn 1]);
                             V(:,j) = V(:,j) + vj;
                         end
-                        startBucket = stopBucket;
-                        startRow = stopRow+1; %since we want to get the next nnz past where we stopped previously
                         % ----
-                    end     
+                    end
                 end
 
-            %This has not been changed from TT
             elseif ver == 2 % 'CHUNKED' SWAPPING R & NZ CHUNKS
 
                 nz = nnz(X);
@@ -543,17 +522,14 @@ classdef htensor
 
                 V = zeros(nn,R);
                 nzctr = 0;
-                startBucket = 1;
-                startRow = 1;
                 while (nzctr < nz)
 
                     % Process nonzero range from nzctr1 to nzctr
                     nzctr1 = nzctr+1;
                     nzctr = min(nz,nzctr1+nzchunk);
+
                     rctr = 0;
-                    [subs,vals,i,j] = t.retrieve(nzctr1-nzctr,[startBucket,startRow]);
-                    startBucket = i;
-                    startRow = j+1;
+                    Xvals = X.vals(nzctr1:nzctr);
                     while (rctr < R)
 
                         % Process r range from rctr1 to rctr (columns of factor matrices)
@@ -562,28 +538,27 @@ classdef htensor
                         rlen = rctr - rctr1 + 1;
 
                         % ----
-                        Vexp = repmat(vals,1,rlen);
+                        Vexp = repmat(Xvals,1,rlen);
                         for k = [1:n-1, n+1:d]
                             Ak = U{k};
-                            Akexp = Ak(subs(nzctr1:nzctr,k),rctr1:rctr);
+                            Akexp = Ak(X.subs(nzctr1:nzctr,k),rctr1:rctr);
                             Vexp = Vexp .* Akexp;
                         end
                         for j = rctr1:rctr
-                            vj = accumarray(subs(nzctr1:nzctr,n), Vexp(:,j-rctr1+1), [nn 1]);
+                            vj = accumarray(X.subs(nzctr1:nzctr,n), Vexp(:,j-rctr1+1), [nn 1]);
                             V(:,j) = V(:,j) + vj;
                         end
                         % ----
 
                     end
                 end
-
             end
         end
 
         function [subs,vals,bi,li] = retrieve(t, n, start)
             % Retrieve n nonzeroes from the table, beginning at start,
-            % which is a tuple containing [bucketIdx, rowIdx]. If an 
-            % element is present at start, then it is included in the 
+            % which is a tuple containing [bucketIdx, rowIdx]. If an
+            % element is present at start, then it is included in the
             % accumulation array.
             %
             % Returns:
@@ -649,6 +624,6 @@ classdef htensor
             t = t.hash_init(t,nbuckets);
         end
 
-        
+
     end %end of methods
 end %end class
