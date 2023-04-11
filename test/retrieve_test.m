@@ -1,4 +1,4 @@
-%Driver code for testing the retrieve() function.
+%code for testing the retrieve() function.
 
 %addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
@@ -18,16 +18,14 @@ startRow = 1;
 
 nz = t.hash_curr_size;
 %nzchunk = 1e4;
-nzchunk = 5;
+nzchunk = 4;
 nzctr = 0;
 
-%This retireves n+1 elements... whoops
+%need to fix
 while (nzctr < nz)
-    % Process nonzero range from nzctr1 to nzctr
-    nzctr1 = nzctr+1;
-    nzctr = min(nz,nzctr1+nzchunk);
-    [subs,vals,stopBucket,stopRow] = t.retrieve(nzctr-nzctr1+1,[startBucket,startRow]);
+    [subs,vals,stopBucket,stopRow] = t.retrieve(nzchunk,[startBucket,startRow]);
     disp(subs)
     startBucket = stopBucket;
-    startRow = stopRow+1; %since we want to get the next nnz past where we stopped previously
+    startRow = stopRow;
+    nzctr = nzctr+nzchunk;
 end

@@ -379,7 +379,7 @@ classdef htensor
             end
         end
 
-        function V = htns_coo_mttkrp(H,U,n,nzchunk,rchunk,ver)
+        function V = htns_coo_mttkrp(X,U,n,nzchunk,rchunk,ver)
             %MTTKRP Matricized tensor times Khatri-Rao product for sparse tensor.
             %   This has been adapted to use sub and val matrices extracted from
             %   a HaCOO/htensor.
@@ -564,14 +564,14 @@ classdef htensor
             % Returns:
             %   subs - A cell array of subscripts containing n nonzeros
             %   vals - An array of values corresponding to the subscripts
-            %   bi - bucket index of last counted nnz
-            %   li - row index of last counted nnz
+            %   bi - bucket index of the next nnz element
+            %   li - row index of the next element past the most
+            %        recently counted
             %
             subs = zeros(n,t.nmodes);
             vals = zeros(n,1);
 
             bi = start(1);
-            li = start(2);
             nctr = 0;
 
             %Accumulate nonzero indexes and values until we reach n
@@ -580,40 +580,39 @@ classdef htensor
                     bi = bi+1;
                     continue
                 else
-                    while li <= size(t.table{bi}{1},1)
+                    for li=start(2):size(t.table{bi}{1},1)
                         subs(nctr+1,:) = t.table{bi}{1}(li,:);
                         vals(nctr+1) = t.table{bi}{2}(li);
                         nctr = nctr+1;
-                        li = li+1;
                         if nctr == n
-                            return
+                            if li == size(t.table{bi}{1},1) %if no more in the chain, increment bucket index and reset list index
+                                bi = bi+1;
+                                li = 1;
+                                return
+                            end
                         end
                     end
                 end
                 li = 1;
                 bi = bi+1;
             end
-
-            %Remove any remaining rows of 0s on the last chunk, if possible.
-            subs = subs(1:nctr,:);
-            vals = vals(1:nctr,:);
-
-        end %end function
+        end
 
         % Function to print all nonzero elements stored in the tensor.
         function display_htns(t)
             fprintf("Printing tensor nonzeros.\n");
+            fmt=[repmat(' %d ',1,t.nmodes)];
+            %fmt=strcat(fmt," %d\n")
+            
             for i = 1:t.nbuckets
                 %skip empty buckets
                 if isempty(t.table{i})
                     continue
                 else
-                    %This needs to be cleaned up
-                    if size(t.table{i}{1},1) == 1
-                        disp(t.table{i});
-                    else
-                        disp(t.table{i}{1})
-                        disp(t.table{i}{2})
+                    for j = 1:size(t.table{i},1)
+                        fprintf(fmt,t.table{i}{1}); %print the index
+                        %t.table{bi}{1}(j,:);
+                        fprintf(" %d\n",t.table{i}{2}(j)); %print the value
                     end
                 end
             end
