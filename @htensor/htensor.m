@@ -421,7 +421,7 @@ classdef htensor
 
             % In the sparse case, we do not want to form the Khatri-Rao product.
 
-            N = ndims(X);
+            N = X.nmodes;
 
             if isa(U,'ktensor')
                 % Absorb lambda into one of the factors, but not the one that's skipped
@@ -478,10 +478,13 @@ classdef htensor
                 end
 
             elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH
+                %fprintf("using chunked approach...\n");
 
-                nz = nnz(X);
-                d = ndims(X);
-                nn = size(X,n);
+                nz = X.hash_curr_size;
+                d = X.nmodes;
+                nn = X.modes(n);
+                startBucket = 1;
+                startRow = 1;
 
                 V = zeros(nn,R);
                 rctr = 0;
@@ -498,18 +501,38 @@ classdef htensor
                         % Process nonzero range from nzctr1 to nzctr
                         nzctr1 = nzctr+1;
                         nzctr = min(nz,nzctr1+nzchunk);
-
+                        
                         % ----
-                        Vexp = repmat(X.vals(nzctr1:nzctr),1,rlen);
+                        [subs,vals,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,startBucket,startRow);
+                        %size(subs,1)
+                        %size(subs,2)
+                        
+                        %size(vals,1)
+                        %size(vals,2)
+                        %size(subs(nzctr1:nzctr),1);
+                        %size(subs(nzctr1:nzctr),2);
+                        %size(vals(nzctr1:nzctr),1);
+                        %size(vals(nzctr1:nzctr),2);
+                        %nzctr1
+                        %nzctr
+                        %Vexp = repmat(vals(nzctr1:nzctr),1,rlen);
+                        Vexp = repmat(vals,1,rlen);
+                        size(Vexp,1)
+                        size(Vexp,2)
                         for k = [1:n-1, n+1:d]
                             Ak = U{k};
-                            Akexp = Ak(X.subs(nzctr1:nzctr,k),rctr1:rctr);
+                            %Akexp = Ak(subs(nzctr1:nzctr,k),rctr1:rctr);
+                            Akexp = Ak(subs(:,k),rctr1:rctr);
+                            %size(Akexp,1)
+                            %size(Akexp,2)
                             Vexp = Vexp .* Akexp;
                         end
                         for j = rctr1:rctr
-                            vj = accumarray(X.subs(nzctr1:nzctr,n), Vexp(:,j-rctr1+1), [nn 1]);
+                            vj = accumarray(subs(:,n), Vexp(:,j-rctr1+1), [nn 1]);
                             V(:,j) = V(:,j) + vj;
                         end
+                        startBucket = stopBucket;
+                        startRow = stopRow;
                         % ----
                     end
                 end
@@ -555,7 +578,7 @@ classdef htensor
             end
         end
 
-        function [subs,vals,bi,li] = retrieve(t, n, start)
+        function [subs,vals,bi,li] = retrieve(t, n, startBucket, startRow)
             % Retrieve n nonzeroes from the table, beginning at start,
             % which is a tuple containing [bucketIdx, rowIdx]. If an
             % element is present at start, then it is included in the
@@ -571,7 +594,8 @@ classdef htensor
             subs = zeros(n,t.nmodes);
             vals = zeros(n,1);
 
-            bi = start(1);
+            bi = startBucket;
+            li = startRow;
             nctr = 0;
 
             %Accumulate nonzero indexes and values until we reach n
@@ -580,39 +604,53 @@ classdef htensor
                     bi = bi+1;
                     continue
                 else
-                    for li=start(2):size(t.table{bi}{1},1)
+                    for li=li:size(t.table{bi}{1},1)
                         subs(nctr+1,:) = t.table{bi}{1}(li,:);
                         vals(nctr+1) = t.table{bi}{2}(li);
+                        %vals(nctr+1) = t.table{bi}{li,2};
                         nctr = nctr+1;
                         if nctr == n
                             if li == size(t.table{bi}{1},1) %if no more in the chain, increment bucket index and reset list index
                                 bi = bi+1;
                                 li = 1;
-                                return
+                               fprintf("setting bucket index to next one/resetting list row index\n");
                             end
+                            %Remove any remaining rows of 0s if we run out of nnz to get.
+                            subs = subs(1:nctr,:);
+                            vals = vals(1:nctr);
+                            fprintf("got enough nonzeros, return...\n");
+                            return
                         end
                     end
                 end
                 li = 1;
                 bi = bi+1;
-            end
+            end       
         end
 
         % Function to print all nonzero elements stored in the tensor.
         function display_htns(t)
-            fprintf("Printing tensor nonzeros.\n");
-            fmt=[repmat(' %d ',1,t.nmodes)];
-            %fmt=strcat(fmt," %d\n")
-            
-            for i = 1:t.nbuckets
-                %skip empty buckets
-                if isempty(t.table{i})
-                    continue
-                else
-                    for j = 1:size(t.table{i},1)
-                        fprintf(fmt,t.table{i}{1}); %print the index
-                        %t.table{bi}{1}(j,:);
-                        fprintf(" %d\n",t.table{i}{2}(j)); %print the value
+            print_limit = 100;
+            if (t.hash_curr_size > print_limit)
+                prompt = "The sparse tensor you are about to print contains more than 100 elements. Do you want to print? (Y/N)";
+                p = input(prompt,"s");
+                if p == "Y" || p == "y"
+
+                    fprintf("Printing tensor nonzeros.\n");
+                    fmt=[repmat(' %d ',1,t.nmodes)];
+                    %fmt=strcat(fmt," %d\n")
+
+                    for i = 1:t.nbuckets
+                        %skip empty buckets
+                        if isempty(t.table{i})
+                            continue
+                        else
+                            %disp(t.table{i})
+                            for j = 1:size(t.table{i},1)
+                                fprintf(fmt,t.table{i}{1}(j,:)); %print the index
+                                fprintf(" %d\n",t.table{i}{2}(j)); %print the value
+                            end
+                        end
                     end
                 end
             end

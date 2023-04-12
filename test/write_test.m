@@ -6,12 +6,12 @@ addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 tic
 
 %writeTns('x.txt')
-%writeTns('uber_trim.txt')
+writeTns('uber_trim.txt')
 %writeTns('uber.txt')
 %writeTns('chicago.txt')
 %writeTns('enron.txt')
 %writeTns('nips.txt')
-writeTns('nell-2.txt')
+%writeTns('nell-2.txt')
 
 toc
 
