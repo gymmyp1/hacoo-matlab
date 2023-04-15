@@ -1,17 +1,18 @@
 %Testing write function for HaCOO .mat files
 
-addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
-%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
+%addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
+addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 tic
 
 %writeTns('x.txt')
-writeTns('uber_trim.txt')
+%writeTns('uber_trim.txt')
 %writeTns('uber.txt')
 %writeTns('chicago.txt')
 %writeTns('enron.txt')
 %writeTns('nips.txt')
 %writeTns('nell-2.txt')
+writeTns('lbnl.txt')
 
 toc
 
