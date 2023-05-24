@@ -1,6 +1,9 @@
 %{
-Carry out mttkrp between the tensor and an array of matrices,
-unfolding the tensor along mode n.
+An attempt at translating the Python hacoo version to MATLAB.
+This is not working.
+
+Carry out mttkrp using the Sparse Vector method between the tensor 
+and an array of matrices, unfolding the tensor along mode n.
 
 Parameters:
     u - A list of matrices, these correspond to the modes
@@ -12,7 +15,7 @@ Returns:
     m - Result matrix with dimensions i_n x f
 %}
 
-function m = htns_mttkrp(T,u,n)
+function m = py_htns_mttkrp(T,u,n)
 
 % number of columns
 fmax = size(u{1},2);
@@ -34,14 +37,17 @@ for f=1:fmax
         end
         for j=1:size(T.table{k},1)  %<-- loop over each entry in that bucket
 
-            idx = T.table{k}{j};
+            %T.table{k}{1} %this gets a matrix of all the idxs in that bucket
+            %T.table{k}{2}  %this gets a matrix of all the vals in that bucket
+            idx = T.table{k}{1}(j,:);
+            val = T.table{k}{2}(j);
 
-            t(ac) = T.table{k}{j,2};
-            tind(ac) = idx(n);
+            t(ac) = val
+            tind(ac) = idx(n)
             ac = ac + 1; %next index to insert into
             
             %update how many elements have been accumulated so far
-            z = ac-1;
+            z = ac-1
     
             % multiply by the factor matrix entries
             i=1;
@@ -59,8 +65,8 @@ for f=1:fmax
         end
     end
     % accumulate m(:,f)
-    for p=1:length(t)
-        m(tind(p),f) = m(tind(p), f) + t(p);
+    for z=1:length(t)
+        m(tind(z),f) = m(tind(z), f) + t(z);
     end
 end
 %return m;

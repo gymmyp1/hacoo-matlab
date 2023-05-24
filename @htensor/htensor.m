@@ -174,7 +174,7 @@ classdef htensor
                         %if not empty, append to the end
                         %t.table{k} = vertcat(t.table{k},{idx v});
                         t.table{k}{1} = vertcat(t.table{k}{1},idx);
-                        t.table{k}{2} = vertcat(t.table{k}{2},v);           
+                        t.table{k}{2} = vertcat(t.table{k}{2},v);
                     end
 
                     t.hash_curr_size = t.hash_curr_size + 1;
@@ -517,12 +517,12 @@ classdef htensor
                         % Process nonzero range from nzctr1 to nzctr
                         nzctr1 = nzctr+1;
                         nzctr = min(nz,nzctr1+nzchunk);
-                        
+
                         % ----
                         tic
                         tStart = cputime;
                         [subs,vals,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,startBucket,startRow);
-                        
+
                         walltime = walltime + toc;
                         tEnd = cputime - tStart;
                         cpu_time = cpu_time + tEnd;
@@ -620,7 +620,7 @@ classdef htensor
                             if li == size(t.table{bi}{1},1) %if no more in the chain, increment bucket index and reset list index
                                 bi = bi+1;
                                 li = 1;
-                               %fprintf("setting bucket index to next one/resetting list row index\n");
+                                %fprintf("setting bucket index to next one/resetting list row index\n");
                             end
                             %Remove any remaining rows of 0s if we run out of nnz to get.
                             subs = subs(1:nctr,:);
@@ -632,39 +632,41 @@ classdef htensor
                 end
                 li = 1;
                 bi = bi+1;
-            end       
+            end
         end
 
         % Function to print all nonzero elements stored in the tensor.
         function display_htns(t)
             print_limit = 100;
+            fmt=[repmat(' %d ',1,t.nmodes)];
             if (t.hash_curr_size > print_limit)
                 prompt = "The sparse tensor you are about to print contains more than 100 elements. Do you want to print? (Y/N)";
                 p = input(prompt,"s");
-                if p == "Y" || p == "y"
-                    fmt=[repmat(' %d ',1,t.nmodes)];
+                if p  ~= "Y" || p ~= "y"
+                    return
+                end
+            end
 
-                    for i = 1:t.nbuckets
-                        %skip empty buckets
-                        if isempty(t.table{i})
-                            continue
-                        else
-                            %disp(t.table{i})
-                            for j = 1:size(t.table{i}{1},1)
-                                fprintf(fmt,t.table{i}{1}(j,:)); %print the index
-                                fprintf(" %d\n",t.table{i}{2}(j)); %print the value
-                            end
+                fprintf("Printing %d tensor elements.\n",t.hash_curr_size);
+                for i = 1:t.nbuckets
+                    %skip empty buckets
+                    if isempty(t.table{i})
+                        continue
+                    else
+                        %disp(t.table{i})
+                        for j = 1:size(t.table{i}{1},1)
+                            fprintf(fmt,t.table{i}{1}(j,:)); %print the index
+                            fprintf(" %d\n",t.table{i}{2}(j)); %print the value
                         end
                     end
                 end
             end
-        end
 
-        % Clear all entries and start with a new hash table.
-        function t = clear(t, nbuckets)
-            t = t.hash_init(t,nbuckets);
-        end
+            % Clear all entries and start with a new hash table.
+            function t = clear(t, nbuckets)
+                t = t.hash_init(t,nbuckets);
+            end
 
 
-    end %end of methods
-end %end class
+        end %end of methods
+    end %end class
