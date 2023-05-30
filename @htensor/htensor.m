@@ -64,7 +64,6 @@ classdef htensor
                 otherwise
                     t.modes = 0;   %<-- EMPTY class constructor
                     t.nmodes = 0;
-                    %NBUCKETS = 512;
                     NBUCKETS = 128;
                     t = hash_init(t,NBUCKETS);
             end
@@ -112,6 +111,26 @@ classdef htensor
             %replace any keys equal to 0 to 1 b/c of MATLAB indexing
             keys(keys==0) = 1;
 
+            for i = 1:length(keys)
+                %check if the slot is occupied already
+                if size(t.table{i},1) == 0
+              
+                    %if not occupied already, just insert
+                    t.table{keys(i)}{1} = idx(i,:);
+                    t.table{keys(i)}{2} = vals(i);
+                else
+                    %else expand the matrix for every mode
+                    %fprintf("expanding matrix...\n")
+                    
+                    t.table{keys(i)} = vertcat(t.table{keys(i)},{idx(i,:),vals(i)});
+                end
+                depth = size(t.table{i},1);
+                if depth > t.max_chain_depth
+                    t.max_chain_depth = depth;
+                end
+                t.hash_curr_size = t.hash_curr_size + 1;
+            end
+            %{
             uniqueKeys = unique(keys);
 
             for i = 1:length(uniqueKeys)
@@ -125,6 +144,7 @@ classdef htensor
                 end
                 t.hash_curr_size = t.hash_curr_size + depth;
             end
+            %}
         end
 
 
@@ -647,26 +667,26 @@ classdef htensor
                 end
             end
 
-                fprintf("Printing %d tensor elements.\n",t.hash_curr_size);
-                for i = 1:t.nbuckets
-                    %skip empty buckets
-                    if isempty(t.table{i})
-                        continue
-                    else
-                        %disp(t.table{i})
-                        for j = 1:size(t.table{i}{1},1)
-                            fprintf(fmt,t.table{i}{1}(j,:)); %print the index
-                            fprintf(" %d\n",t.table{i}{2}(j)); %print the value
-                        end
+            fprintf("Printing %d tensor elements.\n",t.hash_curr_size);
+            for i = 1:t.nbuckets
+                %skip empty buckets
+                if isempty(t.table{i})
+                    continue
+                else
+                    %disp(t.table{i})
+                    for j = 1:size(t.table{i}{1},1)
+                        fprintf(fmt,t.table{i}{1}(j,:)); %print the index
+                        fprintf(" %d\n",t.table{i}{2}(j)); %print the value
                     end
                 end
             end
+        end
 
-            % Clear all entries and start with a new hash table.
-            function t = clear(t, nbuckets)
-                t = t.hash_init(t,nbuckets);
-            end
+        % Clear all entries and start with a new hash table.
+        function t = clear(t, nbuckets)
+            t = t.hash_init(t,nbuckets);
+        end
 
 
-        end %end of methods
-    end %end class
+    end %end of methods
+end %end class

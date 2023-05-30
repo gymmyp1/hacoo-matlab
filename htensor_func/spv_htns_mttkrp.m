@@ -32,7 +32,8 @@ for f=1:fmax
     % go through every bucket
     for b = 1:T.nbuckets
         %if bucket is empty, skip and advance forward
-        if isempty(T.table{b})
+        %if isempty(T.table{b})
+        if size(T.table{b},1) == 0
             continue
         else
             %go through every entry in that bucket
