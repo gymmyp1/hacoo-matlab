@@ -17,9 +17,9 @@ for i = 1:t.nbuckets
     if isempty(t.table{i})
         continue
     else
-        for j = 1:size(t.table{i}{1},1)
-            fprintf(fileID, fmt, t.table{i}{1}(j,:)); %print the index
-            fprintf(fileID,"%d\n",t.table{i}{2}(j)); %print the value
+        for j = 1:size(t.table{i},1)
+            fprintf(fileID, fmt, t.table{i}{j}); %print the index
+            fprintf(fileID,"%d\n",t.table{i}{j,2}); %print the value
         end
     end
 end

@@ -37,15 +37,13 @@ for f=1:fmax
             continue
         else
             %go through every entry in that bucket
-            for j=1:size(T.table{b}{1},1)
+            for j=1:size(T.table{b},1)
 
-                %T.table{b}{1}; %this gets a matrix of all the idxs in that bucket
-                %T.table{b}{2};  %this gets a matrix of all the vals in that bucket
-                idx = T.table{b}{1}(j,:);
-                val = T.table{b}{2}(j);
+                idx = T.table{b}{j};
+                val = T.table{b}{j,2};
 
-                t(ac) = val;
-                tind(ac) = idx(n);
+                t(ac) = val
+                tind(ac) = idx(n)
                 ac = ac + 1; %advance counter
                 z = ac-1;
 

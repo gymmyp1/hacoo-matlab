@@ -5,8 +5,7 @@ addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 tic
 
-writeTns('uber.txt')
-
+writeTns('uber_trim.txt')
 
 toc
 

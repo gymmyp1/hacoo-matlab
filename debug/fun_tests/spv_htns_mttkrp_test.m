@@ -1,13 +1,13 @@
 %File to check HaCOO MTTKRP function.
 
-%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
-addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
+addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
+%addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
 %file = 'x.txt';
 %T = read_htns(file); %<--HaCOO htensor
 
-file = 'uber_trim_hacoo.mat';
-T = load_htns(file);
+%file = 'uber_trim_hacoo.mat';
+%T = load_htns(file);
 
 %set up Tensor Toolbox sptensor
 %table = readtable('x.txt');
@@ -19,6 +19,8 @@ vals = table2array(vals);
 
 
 X = sptensor(idx,vals);
+
+T = htensor(X.subs,X.vals)
 
 %Set up U
 N = T.nmodes;
@@ -49,7 +51,7 @@ fprintf("Calculating Tensor Toolbox mttkrp...\n")
 for n = 1:NUMTRIALS
     tt_ans{n} = mttkrp(X,U,n); %<--matricize with respect to dimension i.
 end
-
+%{
 %check if answers match
 for i = 1:length(htns_ans)
     if htns_ans{i} == tt_ans{i}
@@ -69,13 +71,12 @@ for i = 1:length(htns_ans)
         end
     end
 end
+%}
 
-%{
 %check if answers match within a specified tolerance
 for i = 1:length(htns_ans)
-    LIA = ismembertol(A,B,tol)
-
-    if htns_ans{i} == tt_ans{i}
+    
+    if ismembertol(htns_ans{i},tt_ans{i},0.00005)
         fprintf("Solutions match.\n");
     else
         prompt = "Solutions do not match. Print results? Y/N: ";
@@ -92,7 +93,6 @@ for i = 1:length(htns_ans)
         end
     end
 end
-%}
 
 
 

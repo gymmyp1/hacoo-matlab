@@ -113,21 +113,23 @@ classdef htensor
 
             for i = 1:length(keys)
                 %check if the slot is occupied already
-                if size(t.table{i},1) == 0
+                if size(t.table{keys(i)},1) == 0
               
                     %if not occupied already, just insert
                     t.table{keys(i)}{1} = idx(i,:);
                     t.table{keys(i)}{2} = vals(i);
+                    %t.table{keys(i)}
                 else
-                    %else expand the matrix for every mode
-                    %fprintf("expanding matrix...\n")
                     
-                    t.table{keys(i)} = vertcat(t.table{keys(i)},{idx(i,:),vals(i)});
+                    t.table{keys(i)} = vertcat(t.table{keys(i)},{idx(i,:) vals(i)});
+                    %t.table{keys(i)}
+
+                    depth = size(t.table{keys(i)},1);
+                    if depth > t.max_chain_depth
+                        t.max_chain_depth = depth;
+                    end
                 end
-                depth = size(t.table{i},1);
-                if depth > t.max_chain_depth
-                    t.max_chain_depth = depth;
-                end
+                
                 t.hash_curr_size = t.hash_curr_size + 1;
             end
             %{
@@ -631,13 +633,12 @@ classdef htensor
                     bi = bi+1;
                     continue
                 else
-                    for li=li:size(t.table{bi}{1},1)
-                        subs(nctr+1,:) = t.table{bi}{1}(li,:);
-                        vals(nctr+1) = t.table{bi}{2}(li);
-                        %vals(nctr+1) = t.table{bi}{li,2};
+                    for li=li:size(t.table{bi},1)
+                        subs(nctr+1,:) = t.table{bi}{li};
+                        vals(nctr+1) = t.table{bi}{li,2};
                         nctr = nctr+1;
                         if nctr == n
-                            if li == size(t.table{bi}{1},1) %if no more in the chain, increment bucket index and reset list index
+                            if li == size(t.table{bi},1) %if no more in the chain, increment bucket index and reset list index
                                 bi = bi+1;
                                 li = 1;
                                 %fprintf("setting bucket index to next one/resetting list row index\n");
@@ -657,8 +658,9 @@ classdef htensor
 
         % Function to print all nonzero elements stored in the tensor.
         function display_htns(t)
+            %{
             print_limit = 100;
-            fmt=[repmat(' %d ',1,t.nmodes)];
+            
             if (t.hash_curr_size > print_limit)
                 prompt = "The sparse tensor you are about to print contains more than 100 elements. Do you want to print? (Y/N)";
                 p = input(prompt,"s");
@@ -666,17 +668,19 @@ classdef htensor
                     return
                 end
             end
-
+            %}
+            
             fprintf("Printing %d tensor elements.\n",t.hash_curr_size);
+            fmt=[repmat('%d ',1,t.nmodes)];
             for i = 1:t.nbuckets
                 %skip empty buckets
                 if isempty(t.table{i})
                     continue
                 else
                     %disp(t.table{i})
-                    for j = 1:size(t.table{i}{1},1)
-                        fprintf(fmt,t.table{i}{1}(j,:)); %print the index
-                        fprintf(" %d\n",t.table{i}{2}(j)); %print the value
+                    for j = 1:size(t.table{i},1)
+                        fprintf(fmt, t.table{i}{j}); %print the index
+                        fprintf("%d\n",t.table{i}{j,2}); %print the value
                     end
                 end
             end
