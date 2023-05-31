@@ -1,14 +1,14 @@
-% Read a COO text file into a COO sparse tensor
-% 
+%{
+ Part of Lowe's Textual Influence model.
+% Script to extract factors from all document tensors in the current directory.
 % Input:
-%       file - text file string
-% Returns:
-%       t - COO sptensor
-%
-% Expects text file input of the format: 
-%       idx_1, idx_2,...idx_n val
+%   nfactors - number of factors to use for decomposition
+% Output:
+%   F - list of factors
+%   V - List of norms
+%}
 
-function t = read_coo(file)
+function [F,V] = extract_factors(nfactors)
 %Get the first line using fgetl to figure out how many modes
 opt = {'Delimiter',' '};
 fid = fopen(file,'rt');
