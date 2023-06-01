@@ -132,21 +132,6 @@ classdef htensor
                 
                 t.hash_curr_size = t.hash_curr_size + 1;
             end
-            %{
-            uniqueKeys = unique(keys);
-
-            for i = 1:length(uniqueKeys)
-                idxLoc  = find(keys == uniqueKeys(i));
-                chunk = idx(idxLoc,:);
-                t.table{uniqueKeys(i)} = {chunk vals(idxLoc)};
-
-                depth = length(idxLoc);
-                if depth > t.max_chain_depth
-                    t.max_chain_depth = depth;
-                end
-                t.hash_curr_size = t.hash_curr_size + depth;
-            end
-            %}
         end
 
 
@@ -182,12 +167,18 @@ classdef htensor
                 end
             end
 
+            %make sure index is not invalid
+            if ~all(idx)
+                fprintf("Unable to insert index, which is all zeros.\n")
+                return
+            end
+
             % find the index
             [k, i] = t.search(idx);
 
             % insert accordingly
             if i == -1
-                fprintf("inserting new entry\n")
+                %fprintf("inserting new entry\n")
                 if v ~= 0
                     if isempty(t.table{k})
                         t.table{k} = {idx v};
@@ -205,10 +196,8 @@ classdef htensor
                     end
                 end
             elseif update
-                fprintf("updating value")
-                t.table{k}{i,2}
-                t.table{k}{i,2} = t.table{k}{i,2} + v
-                t.table{k}
+                %fprintf("updating value")
+                t.table{k}{i,2} = t.table{k}{i,2} + v;
             else
                 fprintf("Cannot set entry.\n");
                 return
@@ -258,7 +247,6 @@ classdef htensor
             i = -1;
         end
 
-        %as of now this does the same thing as extract_val()...
         function item = get(t, i)
             %{
 		Retrieve a tensor value.
@@ -273,7 +261,7 @@ classdef htensor
 
             if j ~= -1
                 %fprintf("item found.\n");
-                item = t.table{k}{2}(j);
+                item = t.table{k}{j};
                 return
             else
                 %fprintf("item not found.\n");
@@ -282,29 +270,7 @@ classdef htensor
             end
         end
 
-
-        function v = extract_val(t,idx)
-            %{
-		Retrieve the value of tensor index. 
-		Parameters:
-			t - The tensor
-            i - The tensor index
-		Returns:
-            v - the tensor index's value, 0.0 if not found
-            %}
-            [k,j] = t.search(idx);
-
-            if j ~= -1
-                v = t.table{k}{2}(j);
-                return
-            else
-                v = 0.0;
-                return
-            end
-        end
-
-        function k = hash(t, m)
-            %{
+        %{
 		Hash the index and return the key.
 
 		Parameters:
@@ -312,8 +278,9 @@ classdef htensor
 			m - Summed index integer
 
 		Returns:
-			key
-            %}
+			k - hash key
+        %}
+        function k = hash(t, m)
             hash = m;
             hash = hash + (bitshift(hash,t.sx)); %bit shift to the left
             hash = bitxor(hash, bitshift(hash,-t.sy)); %bit shift to the right
@@ -352,10 +319,9 @@ classdef htensor
             [k,j] = t.search(i);
 
             if j ~= -1 %<-- we located the index successfully
-                fprintf("Deleting entry: ");
+                %fprintf("Deleting entry: ");
                 %disp(i);
-                t.table{k}{1}(j,:) = []; %delete the row in the index cell array
-                t.table{k}{2}(j) = []; %delete the row in the value array
+                t.table{k}(j,:) = []; %delete the entire row
             else
                 fprintf("Could not remove nonzero entry.\n");
                 return
@@ -372,9 +338,9 @@ classdef htensor
                 if isempty(t.table{i})  %<-- skip bucket if empty
                     continue
                 else
-                    for j = 1:size(t.table{i}{1},1)
-                        subs(counter,:) = t.table{i}{1}(j,:);
-                        vals(counter) = t.table{i}{2}(j);
+                    for j = 1:size(t.table{i},1)
+                        subs(counter,:) = t.table{i}{j};
+                        vals(counter) = t.table{i}{j,2};
                         counter = counter+1;
                     end
                 end
@@ -390,8 +356,8 @@ classdef htensor
                 if isempty(t.table{i})  %<-- skip bucket if empty
                     continue
                 else
-                    for j = 1:size(t.table{i}{1},1)
-                        res(counter,:) = t.table{i}{1}(j,:);
+                    for j = 1:size(t.table{i},1)
+                        res(counter,:) = t.table{i}{j};
                         counter = counter+1;
                     end
                 end
@@ -408,202 +374,9 @@ classdef htensor
                 if isempty(t.table{i})  %<-- skip bucket if empty
                     continue
                 else
-                    for j = 1:size(t.table{i}{1},1)
-                        res(counter) = t.table{i}{2}(j);
+                    for j = 1:size(t.table{i},1)
+                        res(counter) = t.table{i}{j,2};
                         counter = counter+1;
-                    end
-                end
-            end
-        end
-
-        function [V,walltime,cpu_time] = htns_coo_mttkrp(X,U,n,nzchunk,rchunk,ver)
-            %MTTKRP Matricized tensor times Khatri-Rao product for sparse tensor.
-            %   This has been adapted to use sub and val matrices extracted from
-            %   a HaCOO/htensor.
-            %
-            %   NOTICE: This internals of this code changed in Version 3.3 of Tensor
-            %   Toolbox to be much more efficient. It now "chunks" the nonzeros as well
-            %   as the factor matrices. Special options for this are described below.
-            %
-            %   V = MTTKRP(X,U,N) efficiently calculates the matrix product of the
-            %   n-mode matricization of X with the Khatri-Rao product of all
-            %   entries in U, a cell array of matrices, except the Nth.  How to
-            %   most efficiently do this computation depends on the type of tensor
-            %   involved.
-            %
-            %   V = MTTKRP(X,K,N) instead uses the Khatri-Rao product formed by the
-            %   matrices and lambda vector stored in the ktensor K. As with the cell
-            %   array, it ignores the Nth factor matrix. The lambda vector is absorbed
-            %   into one of the factor matrices.
-            %
-            %   V = MTTKRP(X,U,N,0) reverts to the OLD version of MTTKRP prior to
-            %   Tensor Toolbox Version 3.3, which repeatedly calls TTV.
-            %
-            %   V = MTTKRP(X,U,N,NZCHUNK,RCHUNK) specifies the "chunk" sizes for the
-            %   nonzeros and factor matrix columns, respectively. These default to
-            %   NZCHUNK=1e4 and RCHUNK=10 if not specified. If NZCHUNK=NNZ(X) and
-            %   RCHUNCK=SIZE(U{1},2), then it's just one big chunk.
-            %
-            %   V = MTTKRP(X,U,N,NZCHUNK,RCHUNK,2) swaps the loop order so that the
-            %   R-loop is INSIDE the NZ-loop rather than the reverse, which is the
-            %   default.
-            %
-            %   Examples
-            %   S = sptensor([3 3 3; 1 3 3; 1 2 1], 4, [3, 4, 3]); %<-Declare sptensor
-            %   mttkrp(S, {rand(3,3), rand(3,3), rand(3,3)}, 2)
-            %
-            %   See also TENSOR/MTTKRP, SPTENSOR/TTV, SPTENSOR
-            %
-            %Tensor Toolbox for MATLAB: <a href="https://www.tensortoolbox.org">www.tensortoolbox.org</a>
-
-            % In the sparse case, we do not want to form the Khatri-Rao product.
-
-            walltime = 0;
-            cpu_time = 0;
-
-            N = X.nmodes;
-
-            if isa(U,'ktensor')
-                % Absorb lambda into one of the factors, but not the one that's skipped
-                if n == 1
-                    U = redistribute(U,2);
-                else
-                    U = redistribute(U,1);
-                end
-                % Extract the factor matrices
-                U = U.u;
-            end
-
-            if (length(U) ~= N)
-                error('Cell array is the wrong length');
-            end
-
-            if ~iscell(U)
-                error('Second argument should be a cell array or a ktensor');
-            end
-
-            if (n == 1)
-                R = size(U{2},2);
-            else
-                R = size(U{1},2);
-            end
-
-            if ~exist('nzchunk','var')
-                nzchunk = 1e4;
-            end
-            if ~exist('rchunk','var')
-                rchunk = 10;
-            end
-            if ~exist('ver','var')
-                if nzchunk <= 0
-                    ver = 0;
-                else
-                    ver = 1;
-                end
-            end
-
-
-            if ver == 0 % OLD WAY
-
-                V = zeros(size(X,n),R);
-
-                for r = 1:R
-                    % Set up cell array with appropriate vectors for ttv multiplication
-                    Z = cell(N,1);
-                    for i = [1:n-1,n+1:N]
-                        Z{i} = U{i}(:,r);
-                    end
-                    % Perform ttv multiplication
-                    V(:,r) = double(ttv(X, Z, -n));
-                end
-
-            elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH
-                %fprintf("using chunked approach...\n");
-
-                nz = X.hash_curr_size;
-                d = X.nmodes;
-                nn = X.modes(n);
-                startBucket = 1;
-                startRow = 1;
-
-                V = zeros(nn,R);
-                rctr = 0;
-                while (rctr < R)
-
-                    % Process r range from rctr1 to rctr (columns of factor matrices)
-                    rctr1 = rctr + 1;
-                    rctr = min(R, rctr + rchunk);
-                    rlen = rctr - rctr1 + 1;
-
-                    nzctr = 0;
-                    while (nzctr < nz)
-
-                        % Process nonzero range from nzctr1 to nzctr
-                        nzctr1 = nzctr+1;
-                        nzctr = min(nz,nzctr1+nzchunk);
-
-                        % ----
-                        tic
-                        tStart = cputime;
-                        [subs,vals,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,startBucket,startRow);
-
-                        walltime = walltime + toc;
-                        tEnd = cputime - tStart;
-                        cpu_time = cpu_time + tEnd;
-
-                        Vexp = repmat(vals(:),1,rlen);
-
-                        for k = [1:n-1, n+1:d]
-                            Ak = U{k};
-                            Akexp = Ak(subs(:,k),rctr1:rctr);
-                            Vexp = Vexp .* Akexp;
-                        end
-                        for j = rctr1:rctr
-                            vj = accumarray(subs(:,n), Vexp(:,j-rctr1+1), [nn 1]);
-                            V(:,j) = V(:,j) + vj;
-                        end
-                        startBucket = stopBucket;
-                        startRow = stopRow;
-                        % ----
-                    end
-                end
-
-            elseif ver == 2 % 'CHUNKED' SWAPPING R & NZ CHUNKS
-
-                nz = nnz(X);
-                d = ndims(X);
-                nn = size(X,n);
-
-                V = zeros(nn,R);
-                nzctr = 0;
-                while (nzctr < nz)
-
-                    % Process nonzero range from nzctr1 to nzctr
-                    nzctr1 = nzctr+1;
-                    nzctr = min(nz,nzctr1+nzchunk);
-
-                    rctr = 0;
-                    Xvals = X.vals(nzctr1:nzctr);
-                    while (rctr < R)
-
-                        % Process r range from rctr1 to rctr (columns of factor matrices)
-                        rctr1 = rctr + 1;
-                        rctr = min(R, rctr + rchunk);
-                        rlen = rctr - rctr1 + 1;
-
-                        % ----
-                        Vexp = repmat(Xvals,1,rlen);
-                        for k = [1:n-1, n+1:d]
-                            Ak = U{k};
-                            Akexp = Ak(X.subs(nzctr1:nzctr,k),rctr1:rctr);
-                            Vexp = Vexp .* Akexp;
-                        end
-                        for j = rctr1:rctr
-                            vj = accumarray(X.subs(nzctr1:nzctr,n), Vexp(:,j-rctr1+1), [nn 1]);
-                            V(:,j) = V(:,j) + vj;
-                        end
-                        % ----
-
                     end
                 end
             end
