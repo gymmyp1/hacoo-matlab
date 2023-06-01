@@ -8,30 +8,36 @@
 %   V - List of norms
 %}
 
-function [F,V] = extract_factors(nfactors)
-%Get the first line using fgetl to figure out how many modes
-opt = {'Delimiter',' '};
-fid = fopen(file,'rt');
-hdr = fgetl(fid);
-num = numel(regexp(hdr,' ','split'));
-if strcmp(file,"enron.txt") || strcmp(file,"nell-2.txt") || strcmp(file,"lbnl.txt") || strcmp(file,"shuf_enron.txt") || strcmp(file,"shuf_nell-2.txt") || strcmp(file,"shuf_lbnl.txt")
-    fmt = repmat('%d',1,num-1); %to read files with decimal values (enron, nell-2,lbnl)
-    fmt = strcat(fmt,'%f');
-else
-    fmt = repmat('%d',1,num); %to read files with no decimal values
+F = {};
+V = {};
+
+%create sptensor from file
+X = read_coo("lin_sax_coo.txt");
+nmodes = size(X.size,2);
+
+%calculate how many factors we need using Eq. 2.5
+nnz = length(X.vals);
+r = nthroot(nnz, 3); %cube root
+nfactors = ceil(nnz/(3 * r -2));
+fprintf("number of factors: %d\n",nfactors);
+
+U = cp_als(X,nfactors); %need to figure out how many factors to decompose
+
+%reassemble the factors into a tensor
+for i=1:nfactors
+    %build the factor
+    T = U.U{1}(:,i);
+    for m=2:nmodes
+        T= T.* U.U{m}(:,i);    %T <- T \ocross U[m][:,i]
+    end
+
+    %compute the norm and normalize the factor
+    lambda = norm(T);
+    T = T/lambda;
+
+    %insert the factor and norm in the list
+    F{end+1} = T;
+    V{end+1} = lambda;
+
 end
 
-frewind(fid); %put first line back
-
-sizeA = [num Inf];
-tdata = fscanf(fid,fmt,sizeA);
-tdata = tdata';
-
-fclose(fid);
-
-idx = tdata(:,1:num-1);
-vals = tdata(:,end);
-
-t = sptensor(idx,vals);
-
-end

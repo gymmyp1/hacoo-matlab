@@ -20,13 +20,14 @@ classdef htensor
     end
     methods
 
-        function t = htensor(varargin) %<-- Class constructor
-            %HACOO Create a sparse tensor using HaCOO storage.
+        %HACOO Create a sparse tensor using HaCOO storage.
             %Parameters:
             %       modes - array of tensor modes
             % OR
             %       subs - array of nonzero tensor subscripts
             %       vals - array of nonzero values
+        function t = htensor(varargin) %<-- Class constructor
+            
             t.hash_curr_size = 0;
             t.load_factor = 0.6;
 
@@ -91,15 +92,15 @@ classdef htensor
             t.mask = t.nbuckets-1;
         end
 
-        function t = init_vals(t,idx,vals)
-            %{
+        %{
 		Set a list of subscripts and values in the sparse tensor hash table.
 		Parameters:
 			subs - Array of nonzero subscripts
             vals - Array of nonzero tensor values
 		Returns:
 			A hacoo data type with a populated hash table.
-            %}
+        %}
+        function t = init_vals(t,idx,vals)
 
             %Sum every row
             S = sum(idx,2);
@@ -212,8 +213,7 @@ classdef htensor
             end
         end
 
-        function [k,i] = search(t, idx)
-            %{
+        %{
 		Search for an index entry in hash table.
 		Parameters:
 		    idx - The nonzero index to search for
@@ -221,8 +221,10 @@ classdef htensor
 			If m is found, it returns the (k, i) tuple where k is
 			  the bucket and i is its location in the chain (the row it's
               located in)
-			If m is not found, it returns (k, -1).
-            %}
+			If m is not found, return (k, -1).
+        %}
+        function [k,i] = search(t, idx)
+
             s = sum(idx);
             k = t.hash(s);
 
@@ -247,25 +249,25 @@ classdef htensor
             i = -1;
         end
 
-        function item = get(t, i)
-            %{
+        %{
 		Retrieve a tensor value.
 		Parameters:
 			t - The tensor
             i - The tensor index to retrieve
 		Returns:
             item - the value at index i if found, 0.0 if not found 
-            %}
+        %}
+        function item = get(t, i)
 
             [k,j] = t.search(i);
 
             if j ~= -1
                 %fprintf("item found.\n");
-                item = t.table{k}{j};
+                item = t.table{k}{j,2}; %return the index's value
                 return
             else
                 %fprintf("item not found.\n");
-                item = 0.0;
+                item = 0;
                 return
             end
         end
@@ -308,7 +310,7 @@ classdef htensor
             %fprintf("Done rehashing,\n");
         end
 
-        % Remove a nonzero entry.
+        % Remove an existing tensor entry.
         % Parameters:
         %       t - A HaCOO htensor
         %       i - the index entry to remove
@@ -382,19 +384,26 @@ classdef htensor
             end
         end
 
+        %{
+        Retrieve n nonzeroes from the table, beginning at start,
+             which is a tuple containing [bucketIdx, rowIdx]. If an
+             element is present at start, then it is included in the
+             accumulation array.
+         Parameters:
+             t - a HaCOO tensor
+             n - number of nonzeros you want to retrieve
+             startBucket - The bucket at which you want to begin
+                              retrieving elements
+             startRow - The row/location in the chain at which you want 
+                           to begin retrieving elements
+          Returns:
+             subs - A cell array of subscripts containing n nonzeros
+             vals - An array of values corresponding to the subscripts
+             bi - bucket index of the next nnz element
+             li - row index of the next element past the most
+                  recently counted
+        %}
         function [subs,vals,bi,li] = retrieve(t, n, startBucket, startRow)
-            % Retrieve n nonzeroes from the table, beginning at start,
-            % which is a tuple containing [bucketIdx, rowIdx]. If an
-            % element is present at start, then it is included in the
-            % accumulation array.
-            %
-            % Returns:
-            %   subs - A cell array of subscripts containing n nonzeros
-            %   vals - An array of values corresponding to the subscripts
-            %   bi - bucket index of the next nnz element
-            %   li - row index of the next element past the most
-            %        recently counted
-            %
             subs = zeros(n,t.nmodes);
             vals = zeros(n,1);
 

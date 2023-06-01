@@ -1,7 +1,7 @@
-% Read a text file into a HaCOO sparse tensor
+% Read a COO text file into a HaCOO sparse tensor
 % 
 % Input:
-%       file - text file string
+%       file - text file, sparse tensor in COO format
 % Returns:
 %       t - HaCOO htensor containing nnz from the file
 %
