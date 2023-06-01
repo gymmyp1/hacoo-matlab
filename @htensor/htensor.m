@@ -62,7 +62,7 @@ classdef htensor
                     t = hash_init(t,NBUCKETS);
                     t = t.init_vals(idx,vals);
                 otherwise
-                    t.modes = 0;   %<-- EMPTY class constructor
+                    t.modes = [];   %<-- EMPTY class constructor
                     t.nmodes = 0;
                     NBUCKETS = 128;
                     t = hash_init(t,NBUCKETS);
@@ -182,21 +182,20 @@ classdef htensor
                 end
             end
 
-
             % find the index
             [k, i] = t.search(idx);
 
             % insert accordingly
             if i == -1
+                fprintf("inserting new entry\n")
                 if v ~= 0
-
                     if isempty(t.table{k})
                         t.table{k} = {idx v};
+                        %t.table{k}
                     else
                         %if not empty, append to the end
-                        %t.table{k} = vertcat(t.table{k},{idx v});
-                        t.table{k}{1} = vertcat(t.table{k}{1},idx);
-                        t.table{k}{2} = vertcat(t.table{k}{2},v);
+                        t.table{k} = vertcat(t.table{k},{idx v});
+                        %t.table{k}
                     end
 
                     t.hash_curr_size = t.hash_curr_size + 1;
@@ -206,7 +205,10 @@ classdef htensor
                     end
                 end
             elseif update
-                %t.table{k}{2}(j) = t.table{k}{2}(j) + v;
+                fprintf("updating value")
+                t.table{k}{i,2}
+                t.table{k}{i,2} = t.table{k}{i,2} + v
+                t.table{k}
             else
                 fprintf("Cannot set entry.\n");
                 return
@@ -247,8 +249,8 @@ classdef htensor
             else
                 %attempt to find item in that bubcket's chain
                 %fprintf('searching within chain\n');
-                for i = 1:size(t.table{k}{1},1)
-                    if t.table{k}{1}(i,:) == idx
+                for i = 1:size(t.table{k},1)
+                    if t.table{k}{i} == idx
                         return
                     end
                 end

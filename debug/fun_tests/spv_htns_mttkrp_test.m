@@ -20,7 +20,7 @@ vals = table2array(vals);
 
 X = sptensor(idx,vals);
 
-T = htensor(X.subs,X.vals)
+T = htensor(X.subs,X.vals);
 
 %Set up U
 N = T.nmodes;
@@ -51,27 +51,6 @@ fprintf("Calculating Tensor Toolbox mttkrp...\n")
 for n = 1:NUMTRIALS
     tt_ans{n} = mttkrp(X,U,n); %<--matricize with respect to dimension i.
 end
-%{
-%check if answers match
-for i = 1:length(htns_ans)
-    if htns_ans{i} == tt_ans{i}
-        fprintf("Solutions match.\n");
-    else
-        prompt = "Solutions do not match. Print results? Y/N: ";
-        p = input(prompt,"s");
-        if p == "Y" || p == "y"
-            fprintf("HaCOO MTTKRP ans: \n");
-            disp(htns_ans{i});
-            fprintf("Tensor Toolbox MTTKRP ans: \n");
-            disp(tt_ans{i});
-            writematrix(htns_ans{i},'htns_ans.txt','Delimiter','space')
-            writematrix(tt_ans{i},'tt_ans.txt','Delimiter','space')
-        else
-            break
-        end
-    end
-end
-%}
 
 %check if answers match within a specified tolerance
 for i = 1:length(htns_ans)

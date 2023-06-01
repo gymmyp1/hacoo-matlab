@@ -42,8 +42,8 @@ for f=1:fmax
                 idx = T.table{b}{j};
                 val = T.table{b}{j,2};
 
-                t(ac) = val
-                tind(ac) = idx(n)
+                t(ac) = val;
+                tind(ac) = idx(n);
                 ac = ac + 1; %advance counter
                 z = ac-1;
 

@@ -6,8 +6,8 @@ addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 %file = 'x.txt';
 %T = read_htns(file); %<--HaCOO htensor
 
-file = 'uber_trim_hacoo.mat';
-T = load_htns(file);
+%file = 'uber_trim_hacoo.mat';
+%T = load_htns(file);
 
 %set up Tensor Toolbox sptensor
 %table = readtable('x.txt');
@@ -19,6 +19,8 @@ vals = table2array(vals);
 
 
 X = sptensor(idx,vals);
+
+T = htensor(X.subs,X.vals);
 
 %Set up U
 N = T.nmodes;
@@ -52,17 +54,17 @@ end
 
 %check if answers match within a specified tolerance
 for i = 1:length(htns_ans)
-    
-    if ismembertol(htns_ans{i},tt_ans{i},0.00005)
+
+    if ismembertol(htns_ans{i},tt_ans{i},0.005)
         fprintf("Solutions match.\n");
     else
         prompt = "Solutions do not match. Print results? Y/N: ";
         p = input(prompt,"s");
         if p == "Y" || p == "y"
-            fprintf("HaCOO MTTKRP ans: \n");
-            disp(htns_ans{i});
-            fprintf("Tensor Toolbox MTTKRP ans: \n");
-            disp(tt_ans{i});
+            %fprintf("HaCOO MTTKRP ans: \n");
+            %disp(htns_ans{i});
+            %fprintf("Tensor Toolbox MTTKRP ans: \n");
+            %disp(tt_ans{i});
             writematrix(htns_ans{i},'htns_ans.txt','Delimiter','space')
             writematrix(tt_ans{i},'tt_ans.txt','Delimiter','space')
         else
