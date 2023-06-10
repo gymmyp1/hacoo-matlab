@@ -17,6 +17,7 @@ classdef htensor
         max_chain_depth
         hash_curr_size %<-- number of nnz in the hash table
         load_factor %<-- percent of the table that can be filled before rehashing
+        next %<-- to be able to jump to next occupied bucket
     end
     methods
 
@@ -45,7 +46,9 @@ classdef htensor
                     t.hash_curr_size = m{3};
                     t.max_chain_depth = m{4};
                     t.load_factor = m{5};
+                    %add "next" array
                     t = t.set_hashing_params();
+                    t = t.init_next();
 
                     %Subs and vals specified as arg1 and ag2
                 case 2
@@ -62,6 +65,9 @@ classdef htensor
                     % Initialize all hash table related things
                     t = hash_init(t,NBUCKETS);
                     t = t.init_vals(idx,vals);
+
+                    %init the "next occupied bucket" flag
+                    t = t.init_next();
                 otherwise
                     t.modes = [];   %<-- EMPTY class constructor
                     t.nmodes = 0;
@@ -134,7 +140,35 @@ classdef htensor
                 t.hash_curr_size = t.hash_curr_size + 1;
             end
         end
+    
+        %{
+          Populate "next" array that indicates the next occupied bucket
+          from any occupied bucket.8uj
+        %}
+        function t = init_next(t)
+            t.next = zeros(t.nbuckets,1);
+            first = 0; %if this  we have found the first occupied bucket in the table
+            prev = 0; %keep track of the last occupied bucket
 
+            for i = 1:t.nbuckets
+                %skip empty buckets
+                if isempty(t.table{i})
+                    if i == t.nbuckets %if we get to the end of the table mark prev's next as the last slot in the table
+                        t.next(prev) = i;
+                    end
+                    continue
+                else %bucket is occupied 
+                    if first ~= 0
+                        t.next(prev) = i;
+                        prev = i; %update curr bucket to be the previous occ. bucket we've seen
+                    else %if this is the first occupied bucket in the table
+                        t.next(1) = i;
+                        prev = i;
+                        first = 1;
+                    end
+                end
+            end
+        end
 
         %Function to insert a nonzero entry in the hash table.
         % Input-

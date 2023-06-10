@@ -28,8 +28,7 @@ nfactors = length(V);
 %index of a potential source factor.
 
 for i=1:nfactors
-    %row = i + nfactors * (ndocs-1); 
-    row = i + nfactors * (ndocs); %not sure if the -1 needed to be removed
+    row = i + nfactors * (ndocs-1); 
     min = M(row,1);
     minIndex = 1;
     

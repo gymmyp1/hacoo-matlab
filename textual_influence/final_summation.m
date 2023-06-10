@@ -15,14 +15,17 @@
 function [I,author] = final_summation(ndocs,S,W)
 
 %I = list of 0 repeated ndocs - 1 times
-I = zeros(1, ndocs);
+I = zeros(1, ndocs-1);
+
+%list of document authors
+
 
 for i=1:ndocs
     if S(i) == 0
         author = author + W(i);
     else
         %j = document number corresponding with S(i)
-        I(j) = I(j) + W(i);
+        I(i) = I(i) + W(i);
     end
 end
 
