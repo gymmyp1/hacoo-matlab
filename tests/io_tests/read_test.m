@@ -9,5 +9,5 @@ t = read_htns('x.txt')
 %t = read_htns('uber.txt')
 %t = read_htns('chicago-crime-comm.txt')
 
-%t.display_htns();
+t.display_htns();
 toc

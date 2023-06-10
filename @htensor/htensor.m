@@ -154,7 +154,7 @@ classdef htensor
                 %skip empty buckets
                 if isempty(t.table{i})
                     if i == t.nbuckets %if we get to the end of the table mark prev's next as the last slot in the table
-                        t.next(prev) = i;
+                        t.next(prev) = -1; %stop there, there are no more occ. buckets
                     end
                     continue
                 else %bucket is occupied 
@@ -487,25 +487,35 @@ classdef htensor
                 end
             end
             %}
-            
+
+            i = 1;
+
             fprintf("Printing %d tensor elements.\n",t.hash_curr_size);
             fmt=[repmat('%d ',1,t.nmodes)];
-            for i = 1:t.nbuckets
-                %skip empty buckets
-                if isempty(t.table{i})
-                    continue
-                else
-                    %disp(t.table{i})
-                    for j = 1:size(t.table{i},1)
-                        fprintf(fmt, t.table{i}{j}); %print the index
-                        fprintf("%d\n",t.table{i}{j,2}); %print the value
-                    end
+
+            %if first bucket isn't empty, print first
+            if ~isempty(t.table{1})
+                for j = 1:size(t.table{1},1)
+                    fprintf(fmt, t.table{1}{j}); %print the index
+                    fprintf("%d\n",t.table{1}{j,2}); %print the value
+                end
+            end
+
+            while i ~= -1 %-1 is flag that there are no more occ. buckets
+                i = t.next(i);
+                if i == -1
+                    break
+                end
+                %disp(t.table{i})
+                for j = 1:size(t.table{i},1)
+                    fprintf(fmt, t.table{i}{j}); %print the index
+                    fprintf("%d\n",t.table{i}{j,2}); %print the value
                 end
             end
         end
 
-        % Clear all entries and start with a new hash table.
-        function t = clear(t, nbuckets)
+            % Clear all entries and start with a new hash table.
+            function t = clear(t, nbuckets)
             t = t.hash_init(t,nbuckets);
         end
 

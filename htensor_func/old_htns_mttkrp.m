@@ -31,10 +31,9 @@ for f=1:fmax
 
     % go through every bucket
     for b = 1:T.nbuckets
-        
-        %if first bucket is empty, skip and advance forward
-        if isempty(T.table{1})
-            b = T.next(1); %skip to next occupied bucket
+        %if bucket is empty, skip and advance forward
+        %if isempty(T.table{b})
+        if size(T.table{b},1) == 0
             continue
         else
             %go through every entry in that bucket
@@ -59,13 +58,6 @@ for f=1:fmax
                     t(z) = u{i}(idx(i), f) * t(z);
                 end
             end
-
-            if b == -1
-                break %we're at the end, stop!
-            end
-
-            %update bucket to next occupied bucket
-            b = t.next(b);
 
         end
     end
