@@ -23,6 +23,7 @@ function write_htns(t,file)
     M{3} = t.hash_curr_size;
     M{4} = t.max_chain_depth;
     M{5} = t.load_factor;
+    M{6} = t.next;
     
     save(file,'T','M','-v7.3'); %adding version to save large files
 end

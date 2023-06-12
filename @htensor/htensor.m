@@ -17,16 +17,18 @@ classdef htensor
         max_chain_depth
         hash_curr_size %<-- number of nnz in the hash table
         load_factor %<-- percent of the table that can be filled before rehashing
+        next %<-- to be able to jump to next occupied bucket
     end
     methods
 
-        function t = htensor(varargin) %<-- Class constructor
-            %HACOO Create a sparse tensor using HaCOO storage.
+        %HACOO Create a sparse tensor using HaCOO storage.
             %Parameters:
             %       modes - array of tensor modes
             % OR
             %       subs - array of nonzero tensor subscripts
             %       vals - array of nonzero values
+        function t = htensor(varargin) %<-- Class constructor
+            
             t.hash_curr_size = 0;
             t.load_factor = 0.6;
 
@@ -44,9 +46,11 @@ classdef htensor
                     t.hash_curr_size = m{3};
                     t.max_chain_depth = m{4};
                     t.load_factor = m{5};
+                    t.next = m{6};
                     t = t.set_hashing_params();
+                    t = t.init_next();
 
-                %Subs and vals specified as arg1 and ag2
+                    %Subs and vals specified as arg1 and ag2
                 case 2
                     %fprintf('creating hacoo tensor with subs and vals initialized\n')
                     idx = varargin{1};
@@ -61,10 +65,13 @@ classdef htensor
                     % Initialize all hash table related things
                     t = hash_init(t,NBUCKETS);
                     t = t.init_vals(idx,vals);
+
+                    %init the "next occupied bucket" flag
+                    t = t.init_next();
                 otherwise
-                    t.modes = 0;   %<-- EMPTY class constructor
+                    t.modes = [];   %<-- EMPTY class constructor
                     t.nmodes = 0;
-                    NBUCKETS = 512;
+                    NBUCKETS = 128;
                     t = hash_init(t,NBUCKETS);
             end
         end
@@ -73,8 +80,9 @@ classdef htensor
         function t = hash_init(t,n)
             t.nbuckets = n;
             t.max_chain_depth = 0;
-            % create column vector w/ appropriate number of bucket slots
-            t.table = cell(t.nbuckets,1);
+            % create column vector w/ appropriate number of bucket slots +
+            % 1 as a dummy bucket
+            t.table = cell(t.nbuckets+1,1);
 
             t = t.set_hashing_params();
         end
@@ -91,15 +99,15 @@ classdef htensor
             t.mask = t.nbuckets-1;
         end
 
-        function t = init_vals(t,idx,vals)
-            %{
+        %{
 		Set a list of subscripts and values in the sparse tensor hash table.
 		Parameters:
 			subs - Array of nonzero subscripts
             vals - Array of nonzero tensor values
 		Returns:
 			A hacoo data type with a populated hash table.
-            %}
+        %}
+        function t = init_vals(t,idx,vals)
 
             %Sum every row
             S = sum(idx,2);
@@ -107,25 +115,66 @@ classdef htensor
             shift2 = arrayfun(@(x) bitxor(x, bitshift(x,-t.sy)),shift1);
             shift3 = arrayfun(@(x) x + bitshift(x,t.sz),shift2);
             keys =  arrayfun(@(x) mod(x,t.nbuckets),shift3);
-            
+
             %replace any keys equal to 0 to 1 b/c of MATLAB indexing
             keys(keys==0) = 1;
 
-            uniqueKeys = unique(keys);
+            for i = 1:length(keys)
+                %check if the slot is occupied already
+                if size(t.table{keys(i)},1) == 0
+              
+                    %if not occupied already, just insert
+                    t.table{keys(i)}{1} = idx(i,:);
+                    t.table{keys(i)}{2} = vals(i);
+                    %t.table{keys(i)}
+                else
+                    
+                    t.table{keys(i)} = vertcat(t.table{keys(i)},{idx(i,:) vals(i)});
+                    %t.table{keys(i)}
 
-            for i = 1:length(uniqueKeys)
-                idxLoc  = find(keys == uniqueKeys(i));
-                chunk = idx(idxLoc,:);
-                t.table{uniqueKeys(i)} = {chunk vals(idxLoc)};
-                
-                depth = length(idxLoc);
-                if depth > t.max_chain_depth
-                    t.max_chain_depth = depth;
+                    depth = size(t.table{keys(i)},1);
+                    if depth > t.max_chain_depth
+                        t.max_chain_depth = depth;
+                    end
                 end
-                t.hash_curr_size = t.hash_curr_size + depth;
+                
+                t.hash_curr_size = t.hash_curr_size + 1;
             end
         end
+    
+        %{
+          Populate "next" array that indicates the next occupied bucket
+          from any occupied bucket.
+        %}
+        function t = init_next(t)
+            t.next = zeros(t.nbuckets+1,1);
+            first = 0; %if this  we have found the first occupied bucket in the table
+            prev = 0; %keep track of the last occupied bucket
 
+            t.next(t.nbuckets+1) = -1; %mark dummy bucket with flag to stop
+
+            for i = 1:t.nbuckets
+
+                if isempty(t.table{i})
+                    if i == t.nbuckets
+                        %when we get to the end of the table, mark the last ocupied bucket's "next" as dummy bucket
+                        t.next(prev) = t.nbuckets+1;
+                        return
+                    end
+
+                else %bucket is occupied
+                    if first ~= 0
+                        t.next(prev) = i;
+                        prev = i; %update curr bucket to be the previous occ. bucket we've seen
+
+                    else %if this is the first occupied bucket in the table
+                        t.next(1) = i;
+                        prev = i;
+                        first = 1;
+                    end
+                end
+            end
+        end
 
         %Function to insert a nonzero entry in the hash table.
         % Input-
@@ -159,20 +208,28 @@ classdef htensor
                 end
             end
 
+            %make sure index is not invalid
+            if ~all(idx)
+                fprintf("Unable to insert index, which is all zeros.\n")
+                return
+            end
 
             % find the index
             [k, i] = t.search(idx);
 
             % insert accordingly
             if i == -1
+                %fprintf("inserting new entry\n")
                 if v ~= 0
-
                     if isempty(t.table{k})
                         t.table{k} = {idx v};
+                        %t.table{k}
                     else
                         %if not empty, append to the end
                         t.table{k} = vertcat(t.table{k},{idx v});
+                        %t.table{k}
                     end
+
                     t.hash_curr_size = t.hash_curr_size + 1;
                     depth = size(t.table{k},1);
                     if depth > t.max_chain_depth
@@ -180,7 +237,8 @@ classdef htensor
                     end
                 end
             elseif update
-                %t.table{k}{2}(j) = t.table{k}{2}(j) + v;
+                %fprintf("updating value")
+                t.table{k}{i,2} = t.table{k}{i,2} + v;
             else
                 fprintf("Cannot set entry.\n");
                 return
@@ -193,12 +251,9 @@ classdef htensor
             if((t.hash_curr_size/t.nbuckets) > t.load_factor)
                 t = t.rehash();
             end
-
-            return;
         end
 
-        function [k,i] = search(t, idx)
-            %{
+        %{
 		Search for an index entry in hash table.
 		Parameters:
 		    idx - The nonzero index to search for
@@ -206,8 +261,10 @@ classdef htensor
 			If m is found, it returns the (k, i) tuple where k is
 			  the bucket and i is its location in the chain (the row it's
               located in)
-			If m is not found, it returns (k, -1).
-            %}
+			If m is not found, return (k, -1).
+        %}
+        function [k,i] = search(t, idx)
+
             s = sum(idx);
             k = t.hash(s);
 
@@ -221,11 +278,10 @@ classdef htensor
                 i = -1;
                 return
             else
-
                 %attempt to find item in that bubcket's chain
                 %fprintf('searching within chain\n');
-                for i = 1:size(t.table{k}{1},1)
-                    if t.table{k}{1}(i,:) == idx
+                for i = 1:size(t.table{k},1)
+                    if t.table{k}{i} == idx
                         return
                     end
                 end
@@ -233,62 +289,40 @@ classdef htensor
             i = -1;
         end
 
-        %as of now this does the same thing as extract_val()...
-        function item = get(t, i)
-            %{
+        %{
 		Retrieve a tensor value.
 		Parameters:
 			t - The tensor
             i - The tensor index to retrieve
 		Returns:
             item - the value at index i if found, 0.0 if not found 
-            %}
+        %}
+        function item = get(t, i)
 
             [k,j] = t.search(i);
 
             if j ~= -1
                 %fprintf("item found.\n");
-                item = t.table{k}{2}(j);
+                item = t.table{k}{j,2}; %return the index's value
                 return
             else
                 %fprintf("item not found.\n");
-                item = 0.0;
+                item = 0;
                 return
             end
         end
 
-    
-        function v = extract_val(t,idx)
-            %{
-		Retrieve the value of tensor index. 
-		Parameters:
-			t - The tensor
-            i - The tensor index
-		Returns:
-            v - the tensor index's value, 0.0 if not found
-            %}
-            [k,j] = t.search(idx);
-
-            if j ~= -1
-                v = t.table{k}{2}(j);
-                return
-            else
-                v = 0.0;
-                return
-            end
-        end
-
-        function k = hash(t, m)
-            %{
-		Hash the index and return the morton code and key.
+        %{
+		Hash the index and return the key.
 
 		Parameters:
             t - The sparse tensor
 			m - Summed index integer
 
 		Returns:
-			key
-            %}
+			k - hash key
+        %}
+        function k = hash(t, m)
             hash = m;
             hash = hash + (bitshift(hash,t.sx)); %bit shift to the left
             hash = bitxor(hash, bitshift(hash,-t.sy)); %bit shift to the right
@@ -306,16 +340,17 @@ classdef htensor
             %fprintf("Rehashing...\n");
 
             %gather all existing subscripts and vals into arrays
-            indexes = t.all_subs();
-            vals = t.all_vals();
+            %indexes = t.all_subs();
+            %vals = t.all_vals();
+            [subs,vals] = t.all_subsVals();
 
             %Create new tensor, constructor will fill new values into table
-            new = htensor(indexes,vals);
+            new = htensor(subs,vals);
 
             %fprintf("Done rehashing,\n");
         end
 
-        % Remove a nonzero entry.
+        % Remove an existing tensor entry.
         % Parameters:
         %       t - A HaCOO htensor
         %       i - the index entry to remove
@@ -326,13 +361,31 @@ classdef htensor
             [k,j] = t.search(i);
 
             if j ~= -1 %<-- we located the index successfully
-                fprintf("Deleting entry: ");
+                %fprintf("Deleting entry: ");
                 %disp(i);
-                t.table{k}{1}(j,:) = []; %delete the row in the index cell array
-                t.table{k}{2}(j) = []; %delete the row in the value array
+                t.table{k}(j,:) = []; %delete the entire row
             else
                 fprintf("Could not remove nonzero entry.\n");
                 return
+            end
+        end
+
+        %Returns 2 arrays [subs,vals] containing all nonzero index subscripts
+        % and their values in the HaCOO sparse tensor t.
+        function [subs,vals] = all_subsVals(t)
+            subs = zeros(t.hash_curr_size,t.nmodes); %<-- preallocate matrix
+            vals = zeros(t.hash_curr_size,1);
+            counter = 1;
+            for i = 1:t.nbuckets
+                if isempty(t.table{i})  %<-- skip bucket if empty
+                    continue
+                else
+                    for j = 1:size(t.table{i},1)
+                        subs(counter,:) = t.table{i}{j};
+                        vals(counter) = t.table{i}{j,2};
+                        counter = counter+1;
+                    end
+                end
             end
         end
 
@@ -340,19 +393,15 @@ classdef htensor
         % in the HaCOO sparse tensor t.
         function res = all_subs(t)
             res = zeros(t.hash_curr_size,t.nmodes); %<-- preallocate matrix
-            cnt = 1;
+            counter = 1;
             for i = 1:t.nbuckets
                 if isempty(t.table{i})  %<-- skip bucket if empty
                     continue
                 else
-                    len = size(t.table{i}{1},1);
-                    if len == 1
-                        %Just copy over that 1 row
-                        res(cnt,:) = t.table{i}{1};
-                    else
-                        res(cnt:cnt+len-1,:) = t.table{i}{1};
+                    for j = 1:size(t.table{i},1)
+                        res(counter,:) = t.table{i}{j};
+                        counter = counter+1;
                     end
-                    cnt = cnt + len;
                 end
             end
         end
@@ -360,282 +409,126 @@ classdef htensor
 
         %Returns an array 'res' containing all nonzeroes in the sparse tensor.
         function res = all_vals(t)
+            t.hash_curr_size
             res = zeros(t.hash_curr_size,1); %<-- preallocate matrix
-            cnt = 1;
+            counter = 1;
             for i = 1:t.nbuckets
                 if isempty(t.table{i})  %<-- skip bucket if empty
                     continue
                 else
-                    len = length(t.table{i}{2});
-                    if len == 1
-                        %Just copy over that 1 row
-                        res(cnt) = t.table{i}{2};
-                    else
-                        res(cnt:cnt+len-1) = t.table{i}{2};
+                    for j = 1:size(t.table{i},1)
+                        res(counter) = t.table{i}{j,2};
+                        counter = counter+1;
                     end
-                    cnt = cnt + len;
                 end
             end
         end
 
-        function V = htns_coo_mttkrp(X,U,n,nzchunk,rchunk,ver)
-            %MTTKRP Matricized tensor times Khatri-Rao product for sparse tensor.
-            %   This has been adapted to use sub and val matrices extracted from
-            %   a HaCOO/htensor.
-            %
-            %   NOTICE: This internals of this code changed in Version 3.3 of Tensor
-            %   Toolbox to be much more efficient. It now "chunks" the nonzeros as well
-            %   as the factor matrices. Special options for this are described below.
-            %
-            %   V = MTTKRP(X,U,N) efficiently calculates the matrix product of the
-            %   n-mode matricization of X with the Khatri-Rao product of all
-            %   entries in U, a cell array of matrices, except the Nth.  How to
-            %   most efficiently do this computation depends on the type of tensor
-            %   involved.
-            %
-            %   V = MTTKRP(X,K,N) instead uses the Khatri-Rao product formed by the
-            %   matrices and lambda vector stored in the ktensor K. As with the cell
-            %   array, it ignores the Nth factor matrix. The lambda vector is absorbed
-            %   into one of the factor matrices.
-            %
-            %   V = MTTKRP(X,U,N,0) reverts to the OLD version of MTTKRP prior to
-            %   Tensor Toolbox Version 3.3, which repeatedly calls TTV.
-            %
-            %   V = MTTKRP(X,U,N,NZCHUNK,RCHUNK) specifies the "chunk" sizes for the
-            %   nonzeros and factor matrix columns, respectively. These default to
-            %   NZCHUNK=1e4 and RCHUNK=10 if not specified. If NZCHUNK=NNZ(X) and
-            %   RCHUNCK=SIZE(U{1},2), then it's just one big chunk.
-            %
-            %   V = MTTKRP(X,U,N,NZCHUNK,RCHUNK,2) swaps the loop order so that the
-            %   R-loop is INSIDE the NZ-loop rather than the reverse, which is the
-            %   default.
-            %
-            %   Examples
-            %   S = sptensor([3 3 3; 1 3 3; 1 2 1], 4, [3, 4, 3]); %<-Declare sptensor
-            %   mttkrp(S, {rand(3,3), rand(3,3), rand(3,3)}, 2)
-            %
-            %   See also TENSOR/MTTKRP, SPTENSOR/TTV, SPTENSOR
-            %
-            %Tensor Toolbox for MATLAB: <a href="https://www.tensortoolbox.org">www.tensortoolbox.org</a>
-
-            % In the sparse case, we do not want to form the Khatri-Rao product.
-
-            N = X.nmodes;
-
-            if isa(U,'ktensor')
-                % Absorb lambda into one of the factors, but not the one that's skipped
-                if n == 1
-                    U = redistribute(U,2);
-                else
-                    U = redistribute(U,1);
-                end
-                % Extract the factor matrices
-                U = U.u;
-            end
-
-            if (length(U) ~= N)
-                error('Cell array is the wrong length');
-            end
-
-            if ~iscell(U)
-                error('Second argument should be a cell array or a ktensor');
-            end
-
-            if (n == 1)
-                R = size(U{2},2);
-            else
-                R = size(U{1},2);
-            end
-
-            if ~exist('nzchunk','var')
-                nzchunk = 1e4;
-            end
-            if ~exist('rchunk','var')
-                rchunk = 10;
-            end
-            if ~exist('ver','var')
-                if nzchunk <= 0
-                    ver = 0;
-                else
-                    ver = 1;
-                end
-            end
-
-            %This has not been changed from TT
-            if ver == 0 % OLD WAY
-
-                V = zeros(size(X,n),R);
-
-                for r = 1:R
-                    % Set up cell array with appropriate vectors for ttv multiplication
-                    Z = cell(N,1);
-                    for i = [1:n-1,n+1:N]
-                        Z{i} = U{i}(:,r);
-                    end
-                    % Perform ttv multiplication
-                    V(:,r) = double(ttv(X, Z, -n));
-                end
-
-            elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH- retrieves directly from table.
-                %fprintf("Using new chunked approach.\n")
-
-                nz = X.hash_curr_size;
-                d = N;
-                nn = X.modes(n);
-                startBucket = 1;
-                startRow = 1;
-
-                V = zeros(nn,R);
-                rctr = 0;
-                while (rctr < R)
-
-                    % Process r range from rctr1 to rctr (columns of factor matrices)
-                    rctr1 = rctr + 1;
-                    rctr = min(R, rctr + rchunk);
-                    rlen = rctr - rctr1 + 1;
-
-                    nzctr = 0;
-                    while (nzctr < nz)
-
-                        % Process nonzero range from nzctr1 to nzctr
-                        nzctr1 = nzctr+1;
-                        nzctr = min(nz,nzctr1+nzchunk);
-                        % ----
-                        [subs,vals,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,[startBucket,startRow]);
-                        Vexp = repmat(vals(:),1,rlen);
-                        for k = [1:n-1, n+1:d]
-                            Ak = U{k};
-                            %subs(:,k)
-                            %Ak(subs(:,k),rctr1:rctr)
-                            %rctr1:rctr
-                            Akexp = Ak(subs(:,k),rctr1:rctr);
-                            Vexp = Vexp .* Akexp;
-                        end
-                        for j = rctr1:rctr
-                            vj = accumarray(subs(:,n), Vexp(:,j-rctr1+1), [nn 1]);
-                            V(:,j) = V(:,j) + vj;
-                        end
-                        startBucket = stopBucket;
-                        startRow = stopRow+1; %since we want to get the next nnz past where we stopped previously
-                        % ----
-                    end     
-                end
-
-            %This has not been changed from TT
-            elseif ver == 2 % 'CHUNKED' SWAPPING R & NZ CHUNKS
-
-                nz = nnz(X);
-                d = ndims(X);
-                nn = size(X,n);
-
-                V = zeros(nn,R);
-                nzctr = 0;
-                startBucket = 1;
-                startRow = 1;
-                while (nzctr < nz)
-
-                    % Process nonzero range from nzctr1 to nzctr
-                    nzctr1 = nzctr+1;
-                    nzctr = min(nz,nzctr1+nzchunk);
-                    rctr = 0;
-                    [subs,vals,i,j] = t.retrieve(nzctr1-nzctr,[startBucket,startRow]);
-                    startBucket = i;
-                    startRow = j+1;
-                    while (rctr < R)
-
-                        % Process r range from rctr1 to rctr (columns of factor matrices)
-                        rctr1 = rctr + 1;
-                        rctr = min(R, rctr + rchunk);
-                        rlen = rctr - rctr1 + 1;
-
-                        % ----
-                        Vexp = repmat(vals,1,rlen);
-                        for k = [1:n-1, n+1:d]
-                            Ak = U{k};
-                            Akexp = Ak(subs(nzctr1:nzctr,k),rctr1:rctr);
-                            Vexp = Vexp .* Akexp;
-                        end
-                        for j = rctr1:rctr
-                            vj = accumarray(subs(nzctr1:nzctr,n), Vexp(:,j-rctr1+1), [nn 1]);
-                            V(:,j) = V(:,j) + vj;
-                        end
-                        % ----
-
-                    end
-                end
-
-            end
+        %{
+            Return the key of the next occupied bucket.
+            
+            Input:
+                t - HaCOO sparse tensor
+                i - index of current bucket
+            Output:
+                b - index of next occupied bucket
+        %}
+        function b = next_bucket(t,i)
+            b = t.next(i);
+            %fprintf("%d is %d's next bucket.\n",b, i)
         end
 
-        function [subs,vals,bi,li] = retrieve(t, n, start)
-            % Retrieve n nonzeroes from the table, beginning at start,
-            % which is a tuple containing [bucketIdx, rowIdx]. If an 
-            % element is present at start, then it is included in the 
-            % accumulation array.
-            %
-            % Returns:
-            %   subs - A cell array of subscripts containing n nonzeros
-            %   vals - An array of values corresponding to the subscripts
-            %   bi - bucket index of last counted nnz
-            %   li - row index of last counted nnz
-            %
+        %{
+        Retrieve n nonzeroes from the table, beginning at start,
+             which is a tuple containing [bucketIdx, rowIdx]. If an
+             element is present at start, then it is included in the
+             accumulation array.
+         Parameters:
+             t - a HaCOO tensor
+             n - number of nonzeros you want to retrieve
+             startBucket - The bucket at which you want to begin
+                              retrieving elements
+             startRow - The row/location in the chain at which you want 
+                           to begin retrieving elements
+          Returns:
+             subs - A cell array of subscripts containing n nonzeros
+             vals - An array of values corresponding to the subscripts
+             bi - bucket index of the next nnz element
+             li - row index of the next element past the most
+                  recently counted
+        %}
+        function [subs,vals,bi,li] = retrieve(t, n, startBucket, startRow)
+
+            n
+
             subs = zeros(n,t.nmodes);
             vals = zeros(n,1);
 
-            bi = start(1);
-            li = start(2);
-            nctr = 0;
+            bi = startBucket;
+            li = startRow;
+            nzctr = 0;
 
             %Accumulate nonzero indexes and values until we reach n
-            while bi < t.nbuckets
-                if isempty(t.table{bi})
-                    bi = bi+1;
-                    continue
-                else
-                    while li <= size(t.table{bi}{1},1)
-                        subs(nctr+1,:) = t.table{bi}{1}(li,:);
-                        vals(nctr+1) = t.table{bi}{2}(li);
-                        nctr = nctr+1;
-                        li = li+1;
-                        if nctr == n
-                            return
+            while bi ~= -1
+                for li=li:size(t.table{bi},1)
+                    subs(nzctr+1,:) = t.table{bi}{li};
+                    vals(nzctr+1) = t.table{bi}{li,2};
+                    nzctr = nzctr+1;
+                    if nzctr == n
+                        if li == size(t.table{bi},1) %if no more in the chain, increment bucket index and reset list index
+                            bi = t.next(bi);
+                            li = 1;
+                            %fprintf("setting bucket index to next occ. bucket/resetting list row index\n");
                         end
+                        
+                        %fprintf("got enough nonzeros, return...\n");
+                        return
                     end
                 end
+
                 li = 1;
-                bi = bi+1;
+                bi = t.next(bi);
             end
 
-            %Remove any remaining rows of 0s on the last chunk, if possible.
-            subs = subs(1:nctr,:);
-            vals = vals(1:nctr,:);
-
-        end %end function
+            %Remove any remaining rows of 0s if we run out of nnz to get.
+            %fprintf("trimming zeroes...\n");
+            subs = subs(1:nzctr,:);
+            vals = vals(1:nzctr);
+        end
 
         % Function to print all nonzero elements stored in the tensor.
         function display_htns(t)
-            fprintf("Printing tensor nonzeros.\n");
-            for i = 1:t.nbuckets
-                %skip empty buckets
-                if isempty(t.table{i})
-                    continue
-                else
-                    %This needs to be cleaned up
-                    if size(t.table{i}{1},1) == 1
-                        disp(t.table{i});
-                    else
-                        disp(t.table{i}{1})
-                        disp(t.table{i}{2})
-                    end
+            %{
+            print_limit = 100;
+            
+            if (t.hash_curr_size > print_limit)
+                prompt = "The sparse tensor you are about to print contains more than 100 elements. Do you want to print? (Y/N)";
+                p = input(prompt,"s");
+                if p  ~= "Y" || p ~= "y"
+                    return
                 end
+            end
+            %}
+
+           i = 1;
+
+            fprintf("Printing %d tensor elements.\n",t.hash_curr_size);
+            fmt=[repmat('%d ',1,t.nmodes)];
+
+            while i ~= -1
+                for j = 1:size(t.table{i},1)
+                    fprintf(fmt, t.table{i}{j}); %print the index
+                    fprintf("%d\n",t.table{i}{j,2}); %print the value
+                end
+                i = t.next_bucket(i);
             end
         end
 
-        % Clear all entries and start with a new hash table.
-        function t = clear(t, nbuckets)
+            % Clear all entries and start with a new hash table.
+            function t = clear(t, nbuckets)
             t = t.hash_init(t,nbuckets);
         end
 
-        
+
     end %end of methods
 end %end class
