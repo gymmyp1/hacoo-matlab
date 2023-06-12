@@ -25,50 +25,41 @@ m = zeros(T.modes(n), fmax);
 % go through each column
 for f=1:fmax
     % preallocate accumulation arrays
-    t=zeros(1,T.hash_curr_size);
+    t = zeros(1,T.hash_curr_size);
     tind=zeros(1,T.hash_curr_size);
     ac = 1; %counter for accumulation arrays
+    b = 1; %bucket index
 
     % go through every bucket
-    for b = 1:T.nbuckets
-        
-        %if first bucket is empty, skip and advance forward
-        if isempty(T.table{1})
-            b = T.next(1); %skip to next occupied bucket
-            continue
-        else
-            %go through every entry in that bucket
-            for j=1:size(T.table{b},1)
+    while b ~= -1
 
-                idx = T.table{b}{j};
-                val = T.table{b}{j,2};
+        %go through every entry in that bucket
+        for j=1:size(T.table{b},1)
 
-                t(ac) = val;
-                tind(ac) = idx(n);
-                ac = ac + 1; %advance counter
-                z = ac-1;
+            idx = T.table{b}{j};
+            val = T.table{b}{j,2};
 
-                % multiply by each factor matrix except the nth matrix
-                for i=1:size(u,1) %<-- for each matrix in u
-                    % skip the unfolded mode
-                    if i==n
-                        continue
-                    end
+            t(ac) = val;
+            tind(ac) = idx(n);
+            ac = ac + 1; %advance counter
+            z = ac-1;
 
-                    % multiply the factor and advance to the next
-                    t(z) = u{i}(idx(i), f) * t(z);
+            % multiply by each factor matrix except the nth matrix
+            for i=1:size(u,1) %<-- for each matrix in u
+                % skip the unfolded mode
+                if i==n
+                    continue
                 end
+
+                % multiply the factor and advance to the next
+                t(z) = u{i}(idx(i), f) * t(z);
             end
-
-            if b == -1
-                break %we're at the end, stop!
-            end
-
-            %update bucket to next occupied bucket
-            b = t.next(b);
-
         end
+
+        %update bucket to next occupied bucket
+        b = t.next(b);
     end
+    
     % accumulate m(:,f)
     for p=1:T.hash_curr_size
         m(tind(p),f) = m(tind(p), f) + t(p);

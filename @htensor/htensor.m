@@ -46,7 +46,7 @@ classdef htensor
                     t.hash_curr_size = m{3};
                     t.max_chain_depth = m{4};
                     t.load_factor = m{5};
-                    %add "next" array
+                    t.next = m{6};
                     t = t.set_hashing_params();
                     t = t.init_next();
 
@@ -80,8 +80,9 @@ classdef htensor
         function t = hash_init(t,n)
             t.nbuckets = n;
             t.max_chain_depth = 0;
-            % create column vector w/ appropriate number of bucket slots
-            t.table = cell(t.nbuckets,1);
+            % create column vector w/ appropriate number of bucket slots +
+            % 1 as a dummy bucket
+            t.table = cell(t.nbuckets+1,1);
 
             t = t.set_hashing_params();
         end
@@ -143,24 +144,29 @@ classdef htensor
     
         %{
           Populate "next" array that indicates the next occupied bucket
-          from any occupied bucket.8uj
+          from any occupied bucket.
         %}
         function t = init_next(t)
-            t.next = zeros(t.nbuckets,1);
+            t.next = zeros(t.nbuckets+1,1);
             first = 0; %if this  we have found the first occupied bucket in the table
             prev = 0; %keep track of the last occupied bucket
 
+            t.next(t.nbuckets+1) = -1; %mark dummy bucket with flag to stop
+
             for i = 1:t.nbuckets
-                %skip empty buckets
+
                 if isempty(t.table{i})
-                    if i == t.nbuckets %if we get to the end of the table mark prev's next as the last slot in the table
-                        t.next(prev) = -1; %stop there, there are no more occ. buckets
+                    if i == t.nbuckets
+                        %when we get to the end of the table, mark the last ocupied bucket's "next" as dummy bucket
+                        t.next(prev) = t.nbuckets+1;
+                        return
                     end
-                    continue
-                else %bucket is occupied 
+
+                else %bucket is occupied
                     if first ~= 0
                         t.next(prev) = i;
                         prev = i; %update curr bucket to be the previous occ. bucket we've seen
+
                     else %if this is the first occupied bucket in the table
                         t.next(1) = i;
                         prev = i;
@@ -419,6 +425,20 @@ classdef htensor
         end
 
         %{
+            Return the key of the next occupied bucket.
+            
+            Input:
+                t - HaCOO sparse tensor
+                i - index of current bucket
+            Output:
+                b - index of next occupied bucket
+        %}
+        function b = next_bucket(t,i)
+            b = t.next(i);
+            %fprintf("%d is %d's next bucket.\n",b, i)
+        end
+
+        %{
         Retrieve n nonzeroes from the table, beginning at start,
              which is a tuple containing [bucketIdx, rowIdx]. If an
              element is present at start, then it is included in the
@@ -438,40 +458,42 @@ classdef htensor
                   recently counted
         %}
         function [subs,vals,bi,li] = retrieve(t, n, startBucket, startRow)
+
+            n
+
             subs = zeros(n,t.nmodes);
             vals = zeros(n,1);
 
             bi = startBucket;
             li = startRow;
-            nctr = 0;
+            nzctr = 0;
 
             %Accumulate nonzero indexes and values until we reach n
-            while bi < t.nbuckets
-                if isempty(t.table{bi})
-                    bi = bi+1;
-                    continue
-                else
-                    for li=li:size(t.table{bi},1)
-                        subs(nctr+1,:) = t.table{bi}{li};
-                        vals(nctr+1) = t.table{bi}{li,2};
-                        nctr = nctr+1;
-                        if nctr == n
-                            if li == size(t.table{bi},1) %if no more in the chain, increment bucket index and reset list index
-                                bi = bi+1;
-                                li = 1;
-                                %fprintf("setting bucket index to next one/resetting list row index\n");
-                            end
-                            %Remove any remaining rows of 0s if we run out of nnz to get.
-                            subs = subs(1:nctr,:);
-                            vals = vals(1:nctr);
-                            %fprintf("got enough nonzeros, return...\n");
-                            return
+            while bi ~= -1
+                for li=li:size(t.table{bi},1)
+                    subs(nzctr+1,:) = t.table{bi}{li};
+                    vals(nzctr+1) = t.table{bi}{li,2};
+                    nzctr = nzctr+1;
+                    if nzctr == n
+                        if li == size(t.table{bi},1) %if no more in the chain, increment bucket index and reset list index
+                            bi = t.next(bi);
+                            li = 1;
+                            %fprintf("setting bucket index to next occ. bucket/resetting list row index\n");
                         end
+                        
+                        %fprintf("got enough nonzeros, return...\n");
+                        return
                     end
                 end
+
                 li = 1;
-                bi = bi+1;
+                bi = t.next(bi);
             end
+
+            %Remove any remaining rows of 0s if we run out of nnz to get.
+            %fprintf("trimming zeroes...\n");
+            subs = subs(1:nzctr,:);
+            vals = vals(1:nzctr);
         end
 
         % Function to print all nonzero elements stored in the tensor.
@@ -488,29 +510,17 @@ classdef htensor
             end
             %}
 
-            i = 1;
+           i = 1;
 
             fprintf("Printing %d tensor elements.\n",t.hash_curr_size);
             fmt=[repmat('%d ',1,t.nmodes)];
 
-            %if first bucket isn't empty, print first
-            if ~isempty(t.table{1})
-                for j = 1:size(t.table{1},1)
-                    fprintf(fmt, t.table{1}{j}); %print the index
-                    fprintf("%d\n",t.table{1}{j,2}); %print the value
-                end
-            end
-
-            while i ~= -1 %-1 is flag that there are no more occ. buckets
-                i = t.next(i);
-                if i == -1
-                    break
-                end
-                %disp(t.table{i})
+            while i ~= -1
                 for j = 1:size(t.table{i},1)
                     fprintf(fmt, t.table{i}{j}); %print the index
                     fprintf("%d\n",t.table{i}{j,2}); %print the value
                 end
+                i = t.next_bucket(i);
             end
         end
 
