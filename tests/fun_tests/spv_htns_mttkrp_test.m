@@ -1,24 +1,10 @@
-%File to check HaCOO MTTKRP function.
+%File to check correctness of HaCOO MTTKRP function.
 
 addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 %addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
-%file = 'x.txt';
-%T = read_htns(file); %<--HaCOO htensor
-
-%file = 'uber_trim_hacoo.mat';
-%T = load_htns(file);
-
 %set up Tensor Toolbox sptensor
-%table = readtable('x.txt');
-table = readtable('uber_trim.txt');
-idx = table(:,1:end-1);
-vals = table(:,end);
-idx = table2array(idx);
-vals = table2array(vals);
-
-
-X = sptensor(idx,vals);
+X = read_coo('uber_trim.txt');
 
 T = htensor(X.subs,X.vals);
 

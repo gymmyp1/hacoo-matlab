@@ -340,12 +340,11 @@ classdef htensor
             %fprintf("Rehashing...\n");
 
             %gather all existing subscripts and vals into arrays
-            %indexes = t.all_subs();
-            %vals = t.all_vals();
             [subs,vals] = t.all_subsVals();
 
             %Create new tensor, constructor will fill new values into table
             new = htensor(subs,vals);
+            new = new.init_next();
 
             %fprintf("Done rehashing,\n");
         end
@@ -376,16 +375,14 @@ classdef htensor
             subs = zeros(t.hash_curr_size,t.nmodes); %<-- preallocate matrix
             vals = zeros(t.hash_curr_size,1);
             counter = 1;
-            for i = 1:t.nbuckets
-                if isempty(t.table{i})  %<-- skip bucket if empty
-                    continue
-                else
-                    for j = 1:size(t.table{i},1)
-                        subs(counter,:) = t.table{i}{j};
-                        vals(counter) = t.table{i}{j,2};
-                        counter = counter+1;
-                    end
+            i = 1;
+            while i ~= -1
+                for j = 1:size(t.table{i},1)
+                    subs(counter,:) = t.table{i}{j};
+                    vals(counter) = t.table{i}{j,2};
+                    counter = counter+1;
                 end
+                i = t.next(i);
             end
         end
 
@@ -394,15 +391,13 @@ classdef htensor
         function res = all_subs(t)
             res = zeros(t.hash_curr_size,t.nmodes); %<-- preallocate matrix
             counter = 1;
-            for i = 1:t.nbuckets
-                if isempty(t.table{i})  %<-- skip bucket if empty
-                    continue
-                else
-                    for j = 1:size(t.table{i},1)
-                        res(counter,:) = t.table{i}{j};
-                        counter = counter+1;
-                    end
+            i = 1;
+            while i ~= -1
+                for j = 1:size(t.table{i},1)
+                    res(counter,:) = t.table{i}{j};
+                    counter = counter+1;
                 end
+                i = t.next(i);
             end
         end
 
@@ -412,15 +407,13 @@ classdef htensor
             t.hash_curr_size
             res = zeros(t.hash_curr_size,1); %<-- preallocate matrix
             counter = 1;
-            for i = 1:t.nbuckets
-                if isempty(t.table{i})  %<-- skip bucket if empty
-                    continue
-                else
-                    for j = 1:size(t.table{i},1)
-                        res(counter) = t.table{i}{j,2};
-                        counter = counter+1;
-                    end
+            i = 1;
+            while i ~= -1
+                for j = 1:size(t.table{i},1)
+                    res(counter) = t.table{i}{j,2};
+                    counter = counter+1;
                 end
+                i = t.next(i);
             end
         end
 
@@ -458,9 +451,7 @@ classdef htensor
                   recently counted
         %}
         function [subs,vals,bi,li] = retrieve(t, n, startBucket, startRow)
-
-            n
-
+            
             subs = zeros(n,t.nmodes);
             vals = zeros(n,1);
 
@@ -510,7 +501,7 @@ classdef htensor
             end
             %}
 
-           i = 1;
+            i = 1;
 
             fprintf("Printing %d tensor elements.\n",t.hash_curr_size);
             fmt=[repmat('%d ',1,t.nmodes)];
@@ -524,8 +515,8 @@ classdef htensor
             end
         end
 
-            % Clear all entries and start with a new hash table.
-            function t = clear(t, nbuckets)
+        % Clear all entries and start with a new hash table.
+        function t = clear(t, nbuckets)
             t = t.hash_init(t,nbuckets);
         end
 

@@ -24,7 +24,7 @@ T = htensor(X.subs,X.vals);
 
 %Set up U
 N = T.nmodes;
-NUMTRIALS = N;
+NUMTRIALS = 1;
 dimorder = 1:N;
 Uinit = cell(N,1);
 
@@ -38,18 +38,22 @@ end
 U = Uinit;
 
 %set up answers array
-htns_ans = cell(NUMTRIALS,1);
-tt_ans = cell(NUMTRIALS,1);
+htns_ans = cell(NUMTRIALS,N);
+tt_ans = cell(NUMTRIALS,N);
 
 fprintf("Calculating HaCOO mttkrp...\n")
 
 for n = 1:NUMTRIALS
-    htns_ans{n} = htns_coo_mttkrp(T,U,n); %<--matricize with respect to dimension n.
+    for m=1:N
+        htns_ans{n,m} = htns_coo_mttkrp(T,U,n); %<--matricize with respect to dimension n.
+    end
 end
 
 fprintf("Calculating Tensor Toolbox mttkrp...\n")
 for n = 1:NUMTRIALS
-    tt_ans{n} = mttkrp(X,U,n); %<--matricize with respect to dimension i.
+    for m=1:N
+        tt_ans{n,m} = mttkrp(X,U,n); %<--matricize with respect to dimension i.
+    end
 end
 
 %check if answers match within a specified tolerance
