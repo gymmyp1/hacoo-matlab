@@ -109,30 +109,59 @@ classdef htensor
         %}
         function t = init_vals(t,idx,vals)
 
-            %Sum every row
-            S = sum(idx,2);
-            shift1 = arrayfun(@(x) x + bitshift(x,t.sx),S);
-            shift2 = arrayfun(@(x) bitxor(x, bitshift(x,-t.sy)),shift1);
-            shift3 = arrayfun(@(x) x + bitshift(x,t.sz),shift2);
-            keys =  arrayfun(@(x) mod(x,t.nbuckets),shift3);
+            keys = zeros(length(idx),1);
+            for i = 1:length(idx)
+               
+                hash = sum(idx(i,:));  %Sum the index
+                hash = hash + bitshift(hash,t.sx); %bit shifting
+                hash = bitxor(hash, bitshift(hash,-t.sy));
+                hash = hash + bitshift(hash,t.sz);
+                keys(i) = mod(hash,t.nbuckets); %mod to get the key
 
-            %replace any keys equal to 0 to 1 b/c of MATLAB indexing
-            keys(keys==0) = 1;
+                %replace any keys equal to 0 to 1 since MATLAB indexes on 1
+                %if key == 0
+                %   key = 1;
+                %end
+            end
 
-            for i = 1:length(keys)
+            keys(keys == 0) = 1;
+
+            uniqueKeys = unique(keys);
+
+            for i=1:length(uniqueKeys)
+                idxLoc = find(keys == uniqueKeys(i));
+                idxChunk = idx(idxLoc,:);
+                valsChunk = vals(idxLoc);
+                %if there are multiple entries for that bucket
+                if size(idxChunk,1) == 1
+                    t.table{uniqueKeys(i)} = {idxChunk vals(idxLoc)};
+                else
+                    %fprintf("inserting multiple entries in same bucket\n");
+                    for j=1:size(idxChunk,1)
+                        t.table{uniqueKeys(i)} = vertcat(t.table{uniqueKeys(i)},{idxChunk(j,:) valsChunk(j)}); 
+                    end
+                    depth = length(idxLoc);
+                    if depth > t.max_chain_depth
+                        t.max_chain_depth = depth;
+                    end
+                end
+                t.hash_curr_size = t.hash_curr_size + size(idxChunk,1);
+            end    
+
+            %{
+            for i=1:length(uniqueKeys)
                 %check if the slot is occupied already
-                if size(t.table{keys(i)},1) == 0
+                if isempty(t.table{key})
               
                     %if not occupied already, just insert
-                    t.table{keys(i)}{1} = idx(i,:);
-                    t.table{keys(i)}{2} = vals(i);
+                    t.table{key}{1} = idx(i,:);
+                    t.table{key}{2} = vals(i);
                     %t.table{keys(i)}
                 else
-                    
-                    t.table{keys(i)} = vertcat(t.table{keys(i)},{idx(i,:) vals(i)});
+                    t.table{key} = vertcat(t.table{key},{idx(i,:) vals(i)});
                     %t.table{keys(i)}
 
-                    depth = size(t.table{keys(i)},1);
+                    depth = size(t.table{key},1);
                     if depth > t.max_chain_depth
                         t.max_chain_depth = depth;
                     end
@@ -140,6 +169,7 @@ classdef htensor
                 
                 t.hash_curr_size = t.hash_curr_size + 1;
             end
+            %}
         end
     
         %{

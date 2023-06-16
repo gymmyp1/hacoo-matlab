@@ -5,7 +5,7 @@ addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 tic
 
-writeTns('uber_trim.txt')
+writeTns('enron.txt')
 
 toc
 
