@@ -50,8 +50,8 @@ classdef htensor
                     t = t.set_hashing_params();
                     t = t.init_next();
 
-                    %Subs and vals specified as arg1 and ag2
-                case 2
+                case 2 %Subs and vals specified as arg1 and ag2
+                    %{
                     %fprintf('creating hacoo tensor with subs and vals initialized\n')
                     idx = varargin{1};
                     vals = varargin{2};
@@ -64,10 +64,31 @@ classdef htensor
 
                     % Initialize all hash table related things
                     t = hash_init(t,NBUCKETS);
-                    t = t.init_vals(idx,vals);
+                    t = t.init_table(idx,vals);
 
                     %init the "next occupied bucket" flag
                     t = t.init_next();
+                    %}
+                
+                case 3
+                    %fprintf('creating hacoo tensor with subs and vals initialized\n')
+                    idx = varargin{1};
+                    vals = varargin{2};
+                    concatIdx = varargin{3};
+
+                    t.modes = max(idx); %<-- if input is an array
+                    t.nmodes = length(t.modes);
+
+                    nnz = size(idx,1);
+                    NBUCKETS = power(2,ceil(log2(nnz/t.load_factor)));
+
+                    % Initialize all hash table related things
+                    t = hash_init(t,NBUCKETS);
+                    t = t.init_table(idx,vals,concatIdx);
+
+                    %init the "next occupied bucket" flag
+                    t = t.init_next();
+
                 otherwise
                     t.modes = [];   %<-- EMPTY class constructor
                     t.nmodes = 0;
@@ -102,17 +123,20 @@ classdef htensor
         %{
 		Set a list of subscripts and values in the sparse tensor hash table.
 		Parameters:
-			subs - Array of nonzero subscripts
+			idx - Array of nonzero subscripts
             vals - Array of nonzero tensor values
+            concatIdx - Array of nonzero subscripts THAT HAVE BEEN CONCATENATED.
+
 		Returns:
 			A hacoo data type with a populated hash table.
         %}
-        function t = init_vals(t,idx,vals)
+        function t = init_table(t,idx,vals,concatIdx)
 
             keys = zeros(length(idx),1);
+
             for i = 1:length(idx)
                
-                hash = sum(idx(i,:));  %Sum the index
+                hash = concatIdx(i);
                 hash = hash + bitshift(hash,t.sx); %bit shifting
                 hash = bitxor(hash, bitshift(hash,-t.sy));
                 hash = hash + bitshift(hash,t.sz);
@@ -126,7 +150,30 @@ classdef htensor
 
             keys(keys == 0) = 1;
 
+            for i=1:length(keys)
+                %check if the slot is occupied already
+                if isempty(t.table{keys(i)})
+              
+                    %if not occupied already, just insert
+                    t.table{keys(i)}{1} = idx(i,:);
+                    t.table{keys(i)}{2} = vals(i);
+                    %t.table{keys(i)}
+                else
+                    t.table{keys(i)} = vertcat(t.table{keys(i)},{idx(i,:) vals(i)});
+                    %t.table{keys(i)}
+
+                    depth = size(t.table{keys(i)},1);
+                    if depth > t.max_chain_depth
+                        t.max_chain_depth = depth;
+                    end
+                end
+                
+                t.hash_curr_size = t.hash_curr_size + 1;
+            end
+
+            %{
             uniqueKeys = unique(keys);
+            length(uniqueKeys)
 
             for i=1:length(uniqueKeys)
                 idxLoc = find(keys == uniqueKeys(i));
@@ -147,9 +194,10 @@ classdef htensor
                 end
                 t.hash_curr_size = t.hash_curr_size + size(idxChunk,1);
             end    
+            %}
 
             %{
-            for i=1:length(uniqueKeys)
+            for i=1:length(keys)
                 %check if the slot is occupied already
                 if isempty(t.table{key})
               
@@ -158,10 +206,10 @@ classdef htensor
                     t.table{key}{2} = vals(i);
                     %t.table{keys(i)}
                 else
-                    t.table{key} = vertcat(t.table{key},{idx(i,:) vals(i)});
+                    t.table{keys(i} = vertcat(t.table{keys(i)},{idx(i,:) vals(i)});
                     %t.table{keys(i)}
 
-                    depth = size(t.table{key},1);
+                    depth = size(t.table{keys(i)},1);
                     if depth > t.max_chain_depth
                         t.max_chain_depth = depth;
                     end

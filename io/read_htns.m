@@ -33,6 +33,15 @@ fclose(fid);
 idx = tdata(:,1:num-1);
 vals = tdata(:,end);
 
-t = htensor(idx,vals);
+lines = readlines(file,"EmptyLineRule","skip");
+
+%get only the indexes
+% Match a blank (\s) followed by zero or more non-blanks(\S*) up to the 
+% end of the string. Matched stubstring is replaced by empty string ('').
+concatIdx = regexprep(lines,'\s\S*$','');
+concatIdx = strrep(concatIdx,' ','');
+concatIdx = str2double(concatIdx);
+
+t = htensor(idx,vals,concatIdx);
 
 end

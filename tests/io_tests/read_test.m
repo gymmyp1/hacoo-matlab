@@ -5,7 +5,7 @@ addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 tic
 
-t = read_htns('uber.txt')
+t = read_htns('x.txt')
 
 %t.display_htns();
 toc
