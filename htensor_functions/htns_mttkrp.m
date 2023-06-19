@@ -1,6 +1,6 @@
 %function [V,walltime,cpu_time] = htns_coo_mttkrp(X,U,n,nzchunk,rchunk,ver)
 
-function V = htns_coo_mttkrp(X,U,n,nzchunk,rchunk,ver)
+function V = htns_mttkrp(X,U,n,nzchunk,rchunk,ver)
 
 %MTTKRP Matricized tensor times Khatri-Rao product for sparse tensor.
 %   This has been adapted to use sub and val matrices extracted from

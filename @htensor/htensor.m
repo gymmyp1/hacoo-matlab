@@ -170,54 +170,6 @@ classdef htensor
                 
                 t.hash_curr_size = t.hash_curr_size + 1;
             end
-
-            %{
-            uniqueKeys = unique(keys);
-            length(uniqueKeys)
-
-            for i=1:length(uniqueKeys)
-                idxLoc = find(keys == uniqueKeys(i));
-                idxChunk = idx(idxLoc,:);
-                valsChunk = vals(idxLoc);
-                %if there are multiple entries for that bucket
-                if size(idxChunk,1) == 1
-                    t.table{uniqueKeys(i)} = {idxChunk vals(idxLoc)};
-                else
-                    %fprintf("inserting multiple entries in same bucket\n");
-                    for j=1:size(idxChunk,1)
-                        t.table{uniqueKeys(i)} = vertcat(t.table{uniqueKeys(i)},{idxChunk(j,:) valsChunk(j)}); 
-                    end
-                    depth = length(idxLoc);
-                    if depth > t.max_chain_depth
-                        t.max_chain_depth = depth;
-                    end
-                end
-                t.hash_curr_size = t.hash_curr_size + size(idxChunk,1);
-            end    
-            %}
-
-            %{
-            for i=1:length(keys)
-                %check if the slot is occupied already
-                if isempty(t.table{key})
-              
-                    %if not occupied already, just insert
-                    t.table{key}{1} = idx(i,:);
-                    t.table{key}{2} = vals(i);
-                    %t.table{keys(i)}
-                else
-                    t.table{keys(i} = vertcat(t.table{keys(i)},{idx(i,:) vals(i)});
-                    %t.table{keys(i)}
-
-                    depth = size(t.table{keys(i)},1);
-                    if depth > t.max_chain_depth
-                        t.max_chain_depth = depth;
-                    end
-                end
-                
-                t.hash_curr_size = t.hash_curr_size + 1;
-            end
-            %}
         end
     
         %{
