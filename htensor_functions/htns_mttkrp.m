@@ -133,6 +133,7 @@ elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH
             %}
 
             [subs,vals,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,startBucket,startRow);
+            subs
 
             %{
             walltime = walltime + toc;

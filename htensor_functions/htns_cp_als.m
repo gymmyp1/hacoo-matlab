@@ -48,7 +48,7 @@ function [P,Uinit,output] = htns_cp_als(X,R,varargin)
 
 
 %% Extract number of dimensions and norm of X.
-N = htns_ndims(X);
+N = X.nmodes;
 normX = htns_norm(X); %changed to htensor's norm function
 
 %% Set algorithm parameters from input or by using defaults
@@ -77,7 +77,7 @@ if iscell(init)
         error('OPTS.init does not have %d cells',N);
     end
     for n = dimorder(2:end)
-        if ~isequal(htns_size(Uinit{n}),[htns_size(X,n) R])
+        if ~isequal(htns_size(Uinit{n}),[hs(X,n) R])
             error('OPTS.init{%d} is the wrong size',n);
         end
     end

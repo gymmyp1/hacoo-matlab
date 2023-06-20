@@ -6,6 +6,7 @@ addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 tic
 t = read_htns('x.txt');
 
-t.all_subs
-t.all_vals
+%t.all_subs
+%t.all_vals
+[subs,vals] = t.all_subsVals
 

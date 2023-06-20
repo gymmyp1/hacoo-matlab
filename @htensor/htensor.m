@@ -51,10 +51,21 @@ classdef htensor
                     t = t.init_next();
 
                 case 2 %Subs and vals specified as arg1 and ag2
-                    %{
-                    %fprintf('creating hacoo tensor with subs and vals initialized\n')
+                    %this will take a long time since it has to convert
+                    %indexes to string and back. case 3 is faster
+                    
                     idx = varargin{1};
                     vals = varargin{2};
+
+                    T = arrayfun(@string,idx);
+                    X = strcat(T(:,1),'',T(:,2)); %To start the new array
+                    
+                    for i=3:size(T,2)
+                        %fprintf("concatenating mode %d\n",i)
+                        X= strcat(X(:,:),'',T(:,i));
+                    end
+                    
+                    concatIdx = arrayfun(@str2double,X);
 
                     t.modes = max(idx); %<-- if input is an array
                     t.nmodes = length(t.modes);
@@ -64,14 +75,13 @@ classdef htensor
 
                     % Initialize all hash table related things
                     t = hash_init(t,NBUCKETS);
-                    t = t.init_table(idx,vals);
+                    t = t.init_table(idx,vals,concatIdx);
 
                     %init the "next occupied bucket" flag
                     t = t.init_next();
-                    %}
-                
+
                 case 3
-                    %fprintf('creating hacoo tensor with subs and vals initialized\n')
+
                     idx = varargin{1};
                     vals = varargin{2};
                     concatIdx = varargin{3};
@@ -94,6 +104,7 @@ classdef htensor
                     t.nmodes = 0;
                     NBUCKETS = 128;
                     t = hash_init(t,NBUCKETS);
+                    t = t.init_next();
             end
         end
 
@@ -175,19 +186,29 @@ classdef htensor
         %{
           Populate "next" array that indicates the next occupied bucket
           from any occupied bucket.
+          The "next" array for a blank table is a vector of zeros with -1
+          at the beginning and end. The last occupied bucket in the list's
+          "next" value is the dummy bucket key.
         %}
         function t = init_next(t)
             t.next = zeros(t.nbuckets+1,1);
             first = 0; %if this  we have found the first occupied bucket in the table
             prev = 0; %keep track of the last occupied bucket
 
-            t.next(t.nbuckets+1) = -1; %mark dummy bucket with flag to stop
+            t.next(end) = -1; %mark dummy bucket with flag to stop
+
+            %if this is a blank table with no elements...
+            if t.hash_curr_size == 0
+                t.next(1) = t.nbuckets+1;
+                return
+            end
 
             for i = 1:t.nbuckets
 
                 if isempty(t.table{i})
                     if i == t.nbuckets
                         %when we get to the end of the table, mark the last ocupied bucket's "next" as dummy bucket
+                        fprintf("reached end of table, marking prev's next as the dummy bucket");
                         t.next(prev) = t.nbuckets+1;
                         return
                     end
@@ -253,11 +274,11 @@ classdef htensor
                 if v ~= 0
                     if isempty(t.table{k})
                         t.table{k} = {idx v};
-                        %t.table{k}
+                        %if it's not the only element in the table, we have to check above for occupied buckets
+                        t = t.update_next(k);
                     else
                         %if not empty, append to the end
                         t.table{k} = vertcat(t.table{k},{idx v});
-                        %t.table{k}
                     end
 
                     t.hash_curr_size = t.hash_curr_size + 1;
@@ -280,6 +301,57 @@ classdef htensor
             % Check if we need to rehash
             if((t.hash_curr_size/t.nbuckets) > t.load_factor)
                 t = t.rehash();
+            end
+        end
+
+        %{
+           Update the "next" array if we have just inserted a new index.
+           Parameters:
+                t - The HaCOO sparse tensor
+                k - hash key of the newly inserted index
+           Returns:
+                t - the updated tensor
+        %}
+        function t = update_next(t,k)
+            %fprintf("current key: %d\n",k)
+            if t.hash_curr_size ~= 0
+                itr = k-1;
+                
+                while itr ~= 0 %keep iterating backwards over the table until we hit bucket one
+                    if t.next(itr) ~= 0
+                        %fprintf("inserted element is sandwiched by two 'next' labels\n")
+                        t.next(k) = t.next(itr); %set k's next to be previous' next
+                        %fprintf("setting %d's next as bucket %d\n",k,t.next(itr))
+                        t.next(itr) = k; %set prev's next to be k
+                        %fprintf("setting %d's next as bucket %d\n",itr,k)
+                        return
+                    end
+                    itr = itr-1;
+                end
+                %{
+                we will never get to this point.
+                %if we get to this point, the inserted element is the first in the list.
+                % iterate forward until we hit an occupied bucket and mark k's next as that bucket
+                itr = k+1;
+                while itr <= t.nbuckets
+                    %if we hit an occupied bucket
+                    if ~isempty(t.table{itr})
+                        t.next(k) = itr;
+                        t.next(1) %don't forget the first
+                        fprintf("Inserted element is the first in the list. setting %d's next as bucket %d\n",k,itr)
+                        return
+                    end
+                    itr = itr+1;
+                end
+                %}
+            else
+                fprintf("Table only has one element. Updating next array\n")
+                %this is the only element in the table, so set
+                %its next to be the end of the table
+                t.next(k) = t.nbuckets+1;
+                %update the first bucket's next to be the new
+                %index
+                t.next(1) = k;
             end
         end
 

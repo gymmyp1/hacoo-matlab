@@ -5,7 +5,7 @@ addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 tic
 
-writeTns('enron.txt')
+writeTns("uber.txt")
 
 toc
 

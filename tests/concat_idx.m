@@ -1,8 +1,8 @@
 %trying to figure out how to concatenate indexes
 
-file = 'uber.txt';
+file = 'x.txt';
 
-method1(file)
+%method1(file)
 method2(file)
 
 function method1(file)
@@ -85,7 +85,7 @@ for i=3:size(T,2)
     X= strcat(X(:,:),'',T(:,i));
 end
 
-idx = arrayfun(@str2double,X);
+concatIdx = arrayfun(@str2double,X)
 
 toc
 end
