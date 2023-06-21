@@ -46,7 +46,7 @@ function [P,Uinit,output] = htns_cp_als(X,R,varargin)
 %Tensor Toolbox for MATLAB: <a href="https://www.tensortoolbox.org">www.tensortoolbox.org</a>
 
 
-
+X
 %% Extract number of dimensions and norm of X.
 N = X.nmodes;
 normX = htns_norm(X); %changed to htensor's norm function
@@ -211,7 +211,8 @@ end
 if printitn>0
     % this is temporary until innerprod
     % with a kruskal and htensor is implemented
-    X = sptensor(X.all_subs(),X.all_vals()');
+    [subs,vals] = X.all_subsVals();
+    X = sptensor(subs,vals); 
     if normX == 0
         fit = norm(P)^2 - 2 * innerprod(X,P);
     else

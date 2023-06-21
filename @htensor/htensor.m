@@ -23,10 +23,21 @@ classdef htensor
 
         %HACOO Create a sparse tensor using HaCOO storage.
             %Parameters:
-            %       modes - array of tensor modes
+            %       file - Load a .mat file with a HaCOO tensor that has 
+            %       been created using write_htns() function.
+            %       
             % OR
             %       subs - array of nonzero tensor subscripts
             %       vals - array of nonzero values
+            %       Note: This is a very slow method due to converting
+            %       subs to string and back again...
+            % OR
+            %       subs - array of nonzero tensor subscripts
+            %       vals - array of nonzero values
+            %       concatIdx - array of concatenated indexes
+            %       Note: This case should be called using the read_htns()
+            %       function.
+
         function t = htensor(varargin) %<-- Class constructor
             
             t.hash_curr_size = 0;
@@ -197,7 +208,8 @@ classdef htensor
 
             t.next(end) = -1; %mark dummy bucket with flag to stop
 
-            %if this is a blank table with no elements...
+            %if this is a blank table with no elements, set the first
+            %bucket's next to be the dummy bucket
             if t.hash_curr_size == 0
                 t.next(1) = t.nbuckets+1;
                 return
@@ -208,7 +220,7 @@ classdef htensor
                 if isempty(t.table{i})
                     if i == t.nbuckets
                         %when we get to the end of the table, mark the last ocupied bucket's "next" as dummy bucket
-                        fprintf("reached end of table, marking prev's next as the dummy bucket");
+                        %fprintf("reached end of table, marking prev's next as the dummy bucket\n");
                         t.next(prev) = t.nbuckets+1;
                         return
                     end
@@ -228,14 +240,14 @@ classdef htensor
         end
 
         %Function to insert a nonzero entry in the hash table.
-        % Input-
+        % Parameters:
         %       t - The hacoo sparse tensor
         %       idx - The nonzero index array
         %       v - The nonzero value
         % Optionally -
         %       update - If index already exists, update its existing
         %                value by v
-        % Returns-
+        % Returns:
         %       t - the updated tensor
         function t = set(t,idx,v,varargin)
             % Set parameters from input or by using defaults
@@ -328,24 +340,8 @@ classdef htensor
                     end
                     itr = itr-1;
                 end
-                %{
-                we will never get to this point.
-                %if we get to this point, the inserted element is the first in the list.
-                % iterate forward until we hit an occupied bucket and mark k's next as that bucket
-                itr = k+1;
-                while itr <= t.nbuckets
-                    %if we hit an occupied bucket
-                    if ~isempty(t.table{itr})
-                        t.next(k) = itr;
-                        t.next(1) %don't forget the first
-                        fprintf("Inserted element is the first in the list. setting %d's next as bucket %d\n",k,itr)
-                        return
-                    end
-                    itr = itr+1;
-                end
-                %}
             else
-                fprintf("Table only has one element. Updating next array\n")
+                %fprintf("Table only has one element. Updating next array\n")
                 %this is the only element in the table, so set
                 %its next to be the end of the table
                 t.next(k) = t.nbuckets+1;
@@ -451,6 +447,7 @@ classdef htensor
             %fprintf("Done rehashing,\n");
         end
 
+        % THIS NEEDS MODIFYING to update the "next" array
         % Remove an existing tensor entry.
         % Parameters:
         %       t - A HaCOO htensor
@@ -471,8 +468,14 @@ classdef htensor
             end
         end
 
-        %Returns 2 arrays [subs,vals] containing all nonzero index subscripts
-        % and their values in the HaCOO sparse tensor t.
+        %{
+            Retrieve all indexes and vals from HaCOO sparse tensor
+        Parameters:
+            t - HaCOO htensor
+        Returns:
+            subs - array of all indexes in HaCOO tensor t
+            vals - array of all values in HaCOO tensor t
+        %}
         function [subs,vals] = all_subsVals(t)
             subs = zeros(t.hash_curr_size,t.nmodes); %<-- preallocate matrix
             vals = zeros(t.hash_curr_size,1);
@@ -488,8 +491,13 @@ classdef htensor
             end
         end
 
-        %Returns array 'res' containing all nonzero index subscripts
-        % in the HaCOO sparse tensor t.
+        %{
+            Retrieve all indexes from HaCOO sparse tensor
+        Parameters:
+            t - HaCOO htensor
+        Returns:
+            res - array of all indexes in HaCOO tensor t
+        %}
         function res = all_subs(t)
             res = zeros(t.hash_curr_size,t.nmodes); %<-- preallocate matrix
             counter = 1;
@@ -504,7 +512,13 @@ classdef htensor
         end
 
 
-        %Returns an array 'res' containing all nonzeroes in the sparse tensor.
+        %{
+            Retrieve all values from HaCOO sparse tensor
+        Parameters:
+            t - HaCOO htensor
+        Returns:
+            res - array of all values in HaCOO tensor t
+        %}
         function res = all_vals(t)
             t.hash_curr_size
             res = zeros(t.hash_curr_size,1); %<-- preallocate matrix
@@ -522,10 +536,10 @@ classdef htensor
         %{
             Return the key of the next occupied bucket.
             
-            Input:
+            Parameters:
                 t - HaCOO sparse tensor
                 i - index of current bucket
-            Output:
+            Returns:
                 b - index of next occupied bucket
         %}
         function b = next_bucket(t,i)
