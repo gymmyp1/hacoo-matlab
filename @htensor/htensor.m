@@ -616,6 +616,65 @@ classdef htensor
             nnz = nnz(1:nzctr,:);
         end
 
+        function [nnz,bi,ri] = retrieve2(t, n, startBucket, startRow)
+            nnz = zeros(n,t.nmodes+1);
+            bi = startBucket;
+            ri = startRow;
+            nzctr = 0;
+            nnzRowIdx = 1;
+
+            if bi == -1
+                fprintf("reached end of table. stop.\n");
+                return
+            end
+
+            %check if starting bucket is empty
+            if isempty(t.table{bi})
+                %fprintf("Start bucket is empty.\n");
+                bi = t.next(bi);
+            end
+
+            % if initial bucket has been iterated all the way through,
+            % increment bucket index and reset list index
+            if ri > size(t.table{bi},1)
+                %fprintf("initial row in bucket is last in chain. going to next bucket.\n");
+                bi = t.next(bi);
+                ri = 1; 
+            end
+
+            %Accumulate nonzero indexes and values until we reach n
+            while bi ~= -1
+                
+                nzctr = nzctr + size(t.table{bi},1);
+                %fprintf("current nnz: ")
+                %nnz
+                %fprintf("\n")
+                if nzctr <= n
+                    fprintf("adding all contents of bucket\n");
+                    topIdx = nnzRowIdx+size(t.table{bi},1)-1; %index of where the last element added should end up
+                    nnz(nnzRowIdx:topIdx,:) = t.table{bi};
+                    nnzRowIdx = nnzRowIdx + size(t.table{bi},1);
+                    if nzctr == n %stop condition
+                        bi = t.next(bi);
+                        return
+                    end
+                else %nzctr > n
+                    %fprintf("bucket has more elements than needed\n");
+                    %we only need to retrieve nzctr-n+1 elements
+                    %fprintf("current nonzeros accumulated: %d\n ",nnzRowIdx-1)
+                    %fprintf("nnzRowIdx: %d\n ",nnzRowIdx)
+                    %nnz
+                    %fprintf("only need %d items from this bucket\n",nzctr-n+1)
+                    %t.table{bi}
+                    ri = nzctr-n+1; %update row index
+                    %get only the elements we need
+                    nnz(nnzRowIdx-1:ri,:) = t.table{bi}(1:ri,:);
+                    return
+                end
+                bi = t.next(bi);
+            end
+        end
+
         % Function to print all nonzero elements stored in the tensor.
         function display_htns(t)
             %{
