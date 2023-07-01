@@ -1,5 +1,4 @@
 % HACOO class for sparse tensor storage.
-% Working file 2/15: trying out if storing morton codes impacts speed
 %
 %HACOO methods:
 
@@ -163,11 +162,6 @@ classdef htensor
                 hash = bitxor(hash, bitshift(hash,-t.sy));
                 hash = hash + bitshift(hash,t.sz);
                 keys(i) = mod(hash,t.nbuckets); %mod to get the key
-
-                %replace any keys equal to 0 to 1 since MATLAB indexes on 1
-                %if key == 0
-                %   key = 1;
-                %end
             end
 
             keys(keys == 0) = 1;
@@ -175,15 +169,10 @@ classdef htensor
             for i=1:length(keys)
                 %check if the slot is occupied already
                 if isempty(t.table{keys(i)})
-              
                     %if not occupied already, just insert
-                    t.table{keys(i)}{1} = idx(i,:);
-                    t.table{keys(i)}{2} = vals(i);
-                    %t.table{keys(i)}
+                    t.table{keys(i)} = [idx(i,:) vals(i)];
                 else
-                    t.table{keys(i)} = vertcat(t.table{keys(i)},{idx(i,:) vals(i)});
-                    %t.table{keys(i)}
-
+                    t.table{keys(i)} = vertcat(t.table{keys(i)},[idx(i,:) vals(i)]);
                     depth = size(t.table{keys(i)},1);
                     if depth > t.max_chain_depth
                         t.max_chain_depth = depth;
@@ -290,7 +279,7 @@ classdef htensor
                         t = t.update_next(k);
                     else
                         %if not empty, append to the end
-                        t.table{k} = vertcat(t.table{k},{idx v});
+                        t.table{k} = vertcat(t.table{k},[idx v]);
                     end
 
                     t.hash_curr_size = t.hash_curr_size + 1;
@@ -301,7 +290,7 @@ classdef htensor
                 end
             elseif update
                 %fprintf("updating value")
-                t.table{k}{i,2} = t.table{k}{i,2} + v;
+                t.table{k}(i,end) = t.table{k}(i,end) + v;
             else
                 fprintf("Cannot set entry.\n");
                 return
@@ -379,7 +368,7 @@ classdef htensor
                 %attempt to find item in that bubcket's chain
                 %fprintf('searching within chain\n');
                 for i = 1:size(t.table{k},1)
-                    if t.table{k}{i} == idx
+                    if t.table{k}(1:end-1) == idx
                         return
                     end
                 end
@@ -401,7 +390,7 @@ classdef htensor
 
             if j ~= -1
                 %fprintf("item found.\n");
-                item = t.table{k}{j,2}; %return the index's value
+                item = t.table{k}(end); %return the index's value
                 return
             else
                 %fprintf("item not found.\n");
@@ -483,8 +472,8 @@ classdef htensor
             i = 1;
             while i ~= -1
                 for j = 1:size(t.table{i},1)
-                    subs(counter,:) = t.table{i}{j};
-                    vals(counter) = t.table{i}{j,2};
+                    subs(counter,:) = t.table{i}(j:end-1);
+                    vals(counter) = t.table{i}(j,end);
                     counter = counter+1;
                 end
                 i = t.next(i);
@@ -504,7 +493,7 @@ classdef htensor
             i = 1;
             while i ~= -1
                 for j = 1:size(t.table{i},1)
-                    res(counter,:) = t.table{i}{j};
+                    res(counter,:) = t.table{i}(j:end-1);
                     counter = counter+1;
                 end
                 i = t.next(i);
@@ -526,7 +515,7 @@ classdef htensor
             i = 1;
             while i ~= -1
                 for j = 1:size(t.table{i},1)
-                    res(counter) = t.table{i}{j,2};
+                    res(counter) = t.table{i}(j,end);
                     counter = counter+1;
                 end
                 i = t.next(i);
@@ -563,44 +552,49 @@ classdef htensor
              subs - A cell array of subscripts containing n nonzeros
              vals - An array of values corresponding to the subscripts
              bi - bucket index of the next nnz element
-             li - row index of the next element past the most
+             ri - row index of the next element past the most
                   recently counted
         %}
-        function [subs,vals,bi,li] = retrieve(t, n, startBucket, startRow)
-            
-            subs = zeros(n,t.nmodes);
-            vals = zeros(n,1);
-
+        function [subs,vals,bi,ri] = retrieve(t, n, startBucket, startRow)
+            nnz = zeros(n,t.nmodes+1);
             bi = startBucket;
-            li = startRow;
+            ri = startRow;
             nzctr = 0;
+
+            %if no more in the chain, increment bucket index and reset list index
+            if ri == size(t.table{bi},1)
+                bi = t.next(bi);
+                ri = 1; 
+            else
+                %increment ri
+                ri = ri+1;
+            end
 
             %Accumulate nonzero indexes and values until we reach n
             while bi ~= -1
-                for li=li:size(t.table{bi},1)
-                    subs(nzctr+1,:) = t.table{bi}{li};
-                    vals(nzctr+1) = t.table{bi}{li,2};
+                for ri=ri:size(t.table{bi},1)
+                    nnz(nzctr+1,:) = t.table{bi}(ri,:);
                     nzctr = nzctr+1;
                     if nzctr == n
-                        if li == size(t.table{bi},1) %if no more in the chain, increment bucket index and reset list index
-                            bi = t.next(bi);
-                            li = 1;
-                            %fprintf("setting bucket index to next occ. bucket/resetting list row index\n");
-                        end
-                        
+                        subs = nnz(1:nzctr,1:end-1);
+                        vals = nnz(1:nzctr,end);
                         %fprintf("got enough nonzeros, return...\n");
+                        %fprintf("bi: %d\n",bi);
+                        %fprintf("ri: %d\n",ri);
                         return
                     end
                 end
 
-                li = 1;
+                ri = 1;
                 bi = t.next(bi);
             end
 
             %Remove any remaining rows of 0s if we run out of nnz to get.
             %fprintf("trimming zeroes...\n");
-            subs = subs(1:nzctr,:);
-            vals = vals(1:nzctr);
+            %fprintf("bi: %d\n",bi);
+            %fprintf("ri: %d\n",ri);
+            subs = nnz(1:nzctr,1:end-1);
+            vals = nnz(1:nzctr,end);
         end
 
         % Function to print all nonzero elements stored in the tensor.
@@ -620,12 +614,12 @@ classdef htensor
             i = 1;
 
             fprintf("Printing %d tensor elements.\n",t.hash_curr_size);
-            fmt=[repmat('%d ',1,t.nmodes)];
+            fmt=[repmat('%d ',1,t.nmodes+1)];
 
             while i ~= -1
                 for j = 1:size(t.table{i},1)
-                    fprintf(fmt, t.table{i}{j}); %print the index
-                    fprintf("%d\n",t.table{i}{j,2}); %print the value
+                    fprintf(fmt, t.table{i}(j,:)); %print the row
+                    fprintf("\n");
                 end
                 i = t.next_bucket(i);
             end
