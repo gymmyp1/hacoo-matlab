@@ -1,26 +1,18 @@
-%File to check HaCOO MTTKRP function.
+%File to verify correctness of HaCOO MTTKRP function.
 
 %addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
-%file = 'x.txt';
-%T = read_htns(file); %<--HaCOO htensor
-
 %file = 'uber_trim_hacoo.mat';
 %T = load_htns(file);
 
+file = ('uber_trim.txt');
+
 %set up Tensor Toolbox sptensor
-%table = readtable('x.txt');
-table = readtable('uber_trim.txt');
-idx = table(:,1:end-1);
-vals = table(:,end);
-idx = table2array(idx);
-vals = table2array(vals);
+X = read_coo(file);
 
-
-X = sptensor(idx,vals);
-
-T = htensor(X.subs,X.vals);
+%set up HaCOO tensor
+T = read_htns(file);
 
 %Set up U
 N = T.nmodes;
@@ -45,7 +37,7 @@ fprintf("Calculating HaCOO mttkrp...\n")
 
 for n = 1:NUMTRIALS
     for m=1:N
-        htns_ans{n,m} = htns_coo_mttkrp(T,U,n); %<--matricize with respect to dimension n.
+        htns_ans{n,m} = htns_mttkrp(T,U,n); %<--matricize with respect to dimension n.
     end
 end
 
@@ -62,7 +54,7 @@ for i = 1:length(htns_ans)
     if ismembertol(htns_ans{i},tt_ans{i},0.005)
         fprintf("Solutions match.\n");
     else
-        prompt = "Solutions do not match. Print results? Y/N: ";
+        prompt = "Solutions do not match. Write results? Y/N: ";
         p = input(prompt,"s");
         if p == "Y" || p == "y"
             %fprintf("HaCOO MTTKRP ans: \n");

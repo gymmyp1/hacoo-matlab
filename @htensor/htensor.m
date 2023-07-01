@@ -466,18 +466,22 @@ classdef htensor
             vals - array of all values in HaCOO tensor t
         %}
         function [subs,vals] = all_subsVals(t)
-            subs = zeros(t.hash_curr_size,t.nmodes); %<-- preallocate matrix
-            vals = zeros(t.hash_curr_size,1);
+            nnz = zeros(t.hash_curr_size,t.nmodes+1); %<-- preallocate matrix
             counter = 1;
             i = 1;
+            if isempty(t.table{i}) 
+                i = t.next(i);
+            end
+
             while i ~= -1
-                for j = 1:size(t.table{i},1)
-                    subs(counter,:) = t.table{i}(j:end-1);
-                    vals(counter) = t.table{i}(j,end);
+                for j=1:size(t.table{i},1)
+                    nnz(counter,:) = t.table{i}(j,:);
                     counter = counter+1;
                 end
                 i = t.next(i);
             end
+            subs = nnz(:,1:end-1);
+            vals = nnz(:,end);
         end
 
         %{
@@ -485,19 +489,24 @@ classdef htensor
         Parameters:
             t - HaCOO htensor
         Returns:
-            res - array of all indexes in HaCOO tensor t
+            subs - array of all indexes in HaCOO tensor t
         %}
-        function res = all_subs(t)
-            res = zeros(t.hash_curr_size,t.nmodes); %<-- preallocate matrix
+        function subs = all_subs(t)
+            nnz = zeros(t.hash_curr_size,t.nmodes+1); %<-- preallocate matrix
             counter = 1;
             i = 1;
+            if isempty(t.table{i}) 
+                i = t.next(i);
+            end
+
             while i ~= -1
-                for j = 1:size(t.table{i},1)
-                    res(counter,:) = t.table{i}(j:end-1);
+                for j=1:size(t.table{i},1)
+                    nnz(counter,:) = t.table{i}(j,:);
                     counter = counter+1;
                 end
                 i = t.next(i);
             end
+            subs = nnz(:,1:end-1);
         end
 
 
@@ -506,20 +515,24 @@ classdef htensor
         Parameters:
             t - HaCOO htensor
         Returns:
-            res - array of all values in HaCOO tensor t
+            vals - array of all values in HaCOO tensor t
         %}
-        function res = all_vals(t)
-            t.hash_curr_size
-            res = zeros(t.hash_curr_size,1); %<-- preallocate matrix
+        function vals = all_vals(t)
+            nnz = zeros(t.hash_curr_size,t.nmodes+1); %<-- preallocate matrix
             counter = 1;
             i = 1;
+            if isempty(t.table{i}) 
+                i = t.next(i);
+            end
+
             while i ~= -1
-                for j = 1:size(t.table{i},1)
-                    res(counter) = t.table{i}(j,end);
+                for j=1:size(t.table{i},1)
+                    nnz(counter,:) = t.table{i}(j,:);
                     counter = counter+1;
                 end
                 i = t.next(i);
             end
+            vals = nnz(:,end);
         end
 
         %{
@@ -561,13 +574,23 @@ classdef htensor
             ri = startRow;
             nzctr = 0;
 
-            %if no more in the chain, increment bucket index and reset list index
-            if ri == size(t.table{bi},1)
+            if bi == -1
+                fprintf("reached end of table. stop.\n");
+                return
+            end
+
+            %check if first bucket is empty
+            if isempty(t.table{1})
+                fprintf("Start bucket is empty.\n");
+                bi = t.next(1);
+            end
+
+            % if initial bucket has been iterated all the way through,
+            % increment bucket index and reset list index
+            if ri > size(t.table{bi},1)
+                fprintf("initial row in bucket is last in chain. going to next bucket.\n");
                 bi = t.next(bi);
                 ri = 1; 
-            else
-                %increment ri
-                ri = ri+1;
             end
 
             %Accumulate nonzero indexes and values until we reach n
@@ -581,6 +604,7 @@ classdef htensor
                         %fprintf("got enough nonzeros, return...\n");
                         %fprintf("bi: %d\n",bi);
                         %fprintf("ri: %d\n",ri);
+                        ri = ri+1;
                         return
                     end
                 end

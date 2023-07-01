@@ -120,7 +120,6 @@ elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH
 
         nzctr = 0;
         while (nzctr < nz)
-
             % Process nonzero range from nzctr1 to nzctr
             nzctr1 = nzctr+1;
             nzctr = min(nz,nzctr1+nzchunk);
@@ -133,6 +132,8 @@ elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH
             %}
 
             [subs,vals,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,startBucket,startRow);
+            startBucket = stopBucket;
+            startRow = stopRow;
 
             %{
             walltime = walltime + toc;
@@ -140,7 +141,7 @@ elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH
             cpu_time = cpu_time + tEnd;
             %}
 
-            Vexp = repmat(vals(:),1,rlen);
+            Vexp = repmat(vals,1,rlen);
 
             for k = [1:n-1, n+1:d]
                 Ak = U{k};
@@ -151,8 +152,6 @@ elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH
                 vj = accumarray(subs(:,n), Vexp(:,j-rctr1+1), [nn 1]);
                 V(:,j) = V(:,j) + vj;
             end
-            startBucket = stopBucket;
-            startRow = stopRow;
             % ----
         end
     end
