@@ -562,13 +562,11 @@ classdef htensor
              startRow - The row/location in the chain at which you want 
                            to begin retrieving elements
           Returns:
-             subs - A cell array of subscripts containing n nonzeros
-             vals - An array of values corresponding to the subscripts
-             bi - bucket index of the next nnz element
-             ri - row index of the next element past the most
-                  recently counted
+             nnz - array of indexes and subscripts
+             bi - bucket index of the last element retrieved
+             ri - row index of the last element retrieved
         %}
-        function [subs,vals,bi,ri] = retrieve(t, n, startBucket, startRow)
+        function [nnz,bi,ri] = retrieve(t, n, startBucket, startRow)
             nnz = zeros(n,t.nmodes+1);
             bi = startBucket;
             ri = startRow;
@@ -581,14 +579,14 @@ classdef htensor
 
             %check if first bucket is empty
             if isempty(t.table{1})
-                fprintf("Start bucket is empty.\n");
+                %fprintf("Start bucket is empty.\n");
                 bi = t.next(1);
             end
 
             % if initial bucket has been iterated all the way through,
             % increment bucket index and reset list index
             if ri > size(t.table{bi},1)
-                fprintf("initial row in bucket is last in chain. going to next bucket.\n");
+                %fprintf("initial row in bucket is last in chain. going to next bucket.\n");
                 bi = t.next(bi);
                 ri = 1; 
             end
@@ -599,8 +597,6 @@ classdef htensor
                     nnz(nzctr+1,:) = t.table{bi}(ri,:);
                     nzctr = nzctr+1;
                     if nzctr == n
-                        subs = nnz(1:nzctr,1:end-1);
-                        vals = nnz(1:nzctr,end);
                         %fprintf("got enough nonzeros, return...\n");
                         %fprintf("bi: %d\n",bi);
                         %fprintf("ri: %d\n",ri);
@@ -617,8 +613,7 @@ classdef htensor
             %fprintf("trimming zeroes...\n");
             %fprintf("bi: %d\n",bi);
             %fprintf("ri: %d\n",ri);
-            subs = nnz(1:nzctr,1:end-1);
-            vals = nnz(1:nzctr,end);
+            nnz = nnz(1:nzctr,:);
         end
 
         % Function to print all nonzero elements stored in the tensor.

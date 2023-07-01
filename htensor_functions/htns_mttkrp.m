@@ -86,113 +86,64 @@ if ~exist('ver','var')
 end
 
 
-if ver == 0 % OLD WAY
 
-    V = zeros(size(X,n),R);
+%fprintf("using chunked approach...\n");
 
-    for r = 1:R
-        % Set up cell array with appropriate vectors for ttv multiplication
-        Z = cell(N,1);
-        for i = [1:n-1,n+1:N]
-            Z{i} = U{i}(:,r);
-        end
-        % Perform ttv multiplication
-        V(:,r) = double(ttv(X, Z, -n));
-    end
+nz = X.hash_curr_size;
+d = X.nmodes;
+nn = X.modes(n);
 
-elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH
-    %fprintf("using chunked approach...\n");
 
-    nz = X.hash_curr_size;
-    d = X.nmodes;
-    nn = X.modes(n);
+V = zeros(nn,R);
+rctr = 0;
+while (rctr < R)
+
+    % Process r range from rctr1 to rctr (columns of factor matrices)
+    rctr1 = rctr + 1;
+    rctr = min(R, rctr + rchunk);
+    rlen = rctr - rctr1 + 1;
+
+    nzctr = 0;
     startBucket = 1;
     startRow = 1;
-
-    V = zeros(nn,R);
-    rctr = 0;
-    while (rctr < R)
-
-        % Process r range from rctr1 to rctr (columns of factor matrices)
-        rctr1 = rctr + 1;
-        rctr = min(R, rctr + rchunk);
-        rlen = rctr - rctr1 + 1;
-
-        nzctr = 0;
-        while (nzctr < nz)
-            % Process nonzero range from nzctr1 to nzctr
-            nzctr1 = nzctr+1;
-            nzctr = min(nz,nzctr1+nzchunk);
-
-            % ----
-            %
-            %{ 
-            tic
-            tStart = cputime;
-            %}
-
-            [subs,vals,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,startBucket,startRow);
-            startBucket = stopBucket;
-            startRow = stopRow;
-
-            %{
-            walltime = walltime + toc;
-            tEnd = cputime - tStart;
-            cpu_time = cpu_time + tEnd;
-            %}
-
-            Vexp = repmat(vals,1,rlen);
-
-            for k = [1:n-1, n+1:d]
-                Ak = U{k};
-                Akexp = Ak(subs(:,k),rctr1:rctr);
-                Vexp = Vexp .* Akexp;
-            end
-            for j = rctr1:rctr
-                vj = accumarray(subs(:,n), Vexp(:,j-rctr1+1), [nn 1]);
-                V(:,j) = V(:,j) + vj;
-            end
-            % ----
-        end
-    end
-
-elseif ver == 2 % 'CHUNKED' SWAPPING R & NZ CHUNKS
-
-    nz = nnz(X);
-    d = ndims(X);
-    nn = size(X,n);
-
-    V = zeros(nn,R);
-    nzctr = 0;
     while (nzctr < nz)
-
         % Process nonzero range from nzctr1 to nzctr
         nzctr1 = nzctr+1;
         nzctr = min(nz,nzctr1+nzchunk);
 
-        rctr = 0;
-        Xvals = X.vals(nzctr1:nzctr);
-        while (rctr < R)
+        % ----
+        %
+        %{
+            tic
+            tStart = cputime;
+        %}
 
-            % Process r range from rctr1 to rctr (columns of factor matrices)
-            rctr1 = rctr + 1;
-            rctr = min(R, rctr + rchunk);
-            rlen = rctr - rctr1 + 1;
+        [nnz,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,startBucket,startRow);
+        subs = nnz(:,1:end-1);
+        vals = nnz(:,end);
 
-            % ----
-            Vexp = repmat(Xvals,1,rlen);
-            for k = [1:n-1, n+1:d]
-                Ak = U{k};
-                Akexp = Ak(X.subs(nzctr1:nzctr,k),rctr1:rctr);
-                Vexp = Vexp .* Akexp;
-            end
-            for j = rctr1:rctr
-                vj = accumarray(X.subs(nzctr1:nzctr,n), Vexp(:,j-rctr1+1), [nn 1]);
-                V(:,j) = V(:,j) + vj;
-            end
-            % ----
+        startBucket = stopBucket;
+        startRow = stopRow;
 
+        %{
+            walltime = walltime + toc;
+            tEnd = cputime - tStart;
+            cpu_time = cpu_time + tEnd;
+        %}
+
+        Vexp = repmat(vals,1,rlen);
+
+        for k = [1:n-1, n+1:d]
+            Ak = U{k};
+            Akexp = Ak(subs(:,k),rctr1:rctr);
+            Vexp = Vexp .* Akexp;
         end
+        for j = rctr1:rctr
+            vj = accumarray(subs(:,n), Vexp(:,j-rctr1+1), [nn 1]);
+            V(:,j) = V(:,j) + vj;
+        end
+        % ----
     end
 end
+
 end

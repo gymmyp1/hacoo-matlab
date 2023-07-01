@@ -37,14 +37,14 @@ fprintf("Calculating HaCOO mttkrp...\n")
 
 for n = 1:NUMTRIALS
     for m=1:N
-        htns_ans{n,m} = htns_mttkrp(T,U,n); %<--matricize with respect to dimension n.
+        htns_ans{n,m} = htns_mttkrp(T,U,m); %<--matricize with respect to dimension n.
     end
 end
 
 fprintf("Calculating Tensor Toolbox mttkrp...\n")
 for n = 1:NUMTRIALS
     for m=1:N
-        tt_ans{n,m} = mttkrp(X,U,n); %<--matricize with respect to dimension i.
+        tt_ans{n,m} = mttkrp(X,U,m); %<--matricize with respect to dimension i.
     end
 end
 
