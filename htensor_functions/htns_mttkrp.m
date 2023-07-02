@@ -1,6 +1,6 @@
 %function [V,walltime,cpu_time] = htns_coo_mttkrp(X,U,n,nzchunk,rchunk,ver)
 
-function V = htns_mttkrp(X,U,n,nzchunk,rchunk,ver)
+function V = htns_mttkrp(X,U,n,nzchunk,rchunk)
 
 %MTTKRP Matricized tensor times Khatri-Rao product for sparse tensor.
 %   This has been adapted to use sub and val matrices extracted from
@@ -22,17 +22,10 @@ function V = htns_mttkrp(X,U,n,nzchunk,rchunk,ver)
 %   array, it ignores the Nth factor matrix. The lambda vector is absorbed
 %   into one of the factor matrices.
 %
-%   V = MTTKRP(X,U,N,0) reverts to the OLD version of MTTKRP prior to
-%   Tensor Toolbox Version 3.3, which repeatedly calls TTV.
-%
 %   V = MTTKRP(X,U,N,NZCHUNK,RCHUNK) specifies the "chunk" sizes for the
 %   nonzeros and factor matrix columns, respectively. These default to
 %   NZCHUNK=1e4 and RCHUNK=10 if not specified. If NZCHUNK=NNZ(X) and
 %   RCHUNCK=SIZE(U{1},2), then it's just one big chunk.
-%
-%   V = MTTKRP(X,U,N,NZCHUNK,RCHUNK,2) swaps the loop order so that the
-%   R-loop is INSIDE the NZ-loop rather than the reverse, which is the
-%   default.
 %
 %   Examples
 %   S = sptensor([3 3 3; 1 3 3; 1 2 1], 4, [3, 4, 3]); %<-Declare sptensor
@@ -77,18 +70,10 @@ end
 if ~exist('rchunk','var')
     rchunk = 10;
 end
-if ~exist('ver','var')
-    if nzchunk <= 0
-        ver = 0;
-    else
-        ver = 1;
-    end
-end
-
-
 
 %fprintf("using chunked approach...\n");
 
+flag = 0; %is this the first iteration? all other iterations we don't have to retrieve from the table any more.
 nz = X.hash_curr_size;
 d = X.nmodes;
 nn = X.modes(n);
@@ -96,6 +81,11 @@ nn = X.modes(n);
 
 V = zeros(nn,R);
 rctr = 0;
+
+%since this processes rchunks at a time, we need space to save ceiling(R/rchunk) chunks of nonzeros
+tempSubs = cell(1,ceil(R/rchunk));
+tempVals = cell(1,ceil(R/rchunk));
+
 while (rctr < R)
 
     % Process r range from rctr1 to rctr (columns of factor matrices)
@@ -104,31 +94,49 @@ while (rctr < R)
     rlen = rctr - rctr1 + 1;
 
     nzctr = 0;
+    itrNum = 1; %counter for revisiting nonzeros for a new rchunk
     startBucket = 1;
     startRow = 1;
     while (nzctr < nz)
+        
+
         % Process nonzero range from nzctr1 to nzctr
         nzctr1 = nzctr+1;
         nzctr = min(nz,nzctr1+nzchunk);
 
         % ----
-        %
-        %{
-            tic
-            tStart = cputime;
-        %}
 
-        [nnz,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,startBucket,startRow);
+       
+        if flag
+            %we don't have to retrieve from the table again
+            %fprintf("this is not the first iteration\n")
+
+            %use our saved subs/vals instead of retrieving from the table
+            subs = tempSubs{itrNum};
+            vals = tempVals{itrNum};
+
+        else
+            %fprintf("This is the first iteration\n")
+             %this is happening every rchunk, which slows it down. temporarily save results for other iterations
+            [nnz,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,startBucket,startRow);
+            subs = nnz(:,1:end-1);
+            vals = nnz(:,end);
+
+            startBucket = stopBucket;
+            startRow = stopRow;
+
+            %save result for later
+            tempSubs{itrNum} = subs;
+            tempVals{itrNum} = vals;
+        end
+        
+        %{
+        [nnz,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,startBucket,startRow); %this is happening every rchunk, which slows it down. maybe temporarily sabe thi
         subs = nnz(:,1:end-1);
         vals = nnz(:,end);
 
         startBucket = stopBucket;
         startRow = stopRow;
-
-        %{
-            walltime = walltime + toc;
-            tEnd = cputime - tStart;
-            cpu_time = cpu_time + tEnd;
         %}
 
         Vexp = repmat(vals,1,rlen);
@@ -142,8 +150,11 @@ while (rctr < R)
             vj = accumarray(subs(:,n), Vexp(:,j-rctr1+1), [nn 1]);
             V(:,j) = V(:,j) + vj;
         end
+
+        itrNum = itrNum + 1;
         % ----
     end
+    flag = 1; %flip flag
 end
 
 end

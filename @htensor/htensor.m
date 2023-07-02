@@ -467,17 +467,16 @@ classdef htensor
         %}
         function [subs,vals] = all_subsVals(t)
             nnz = zeros(t.hash_curr_size,t.nmodes+1); %<-- preallocate matrix
-            counter = 1;
+            oldCount = 1;
+            count = 1;
             i = 1;
-            if isempty(t.table{i}) 
-                i = t.next(i);
-            end
-
+            
+            
             while i ~= -1
-                for j=1:size(t.table{i},1)
-                    nnz(counter,:) = t.table{i}(j,:);
-                    counter = counter+1;
-                end
+                oldCount = count;
+                count = count + size(t.table{i},1);
+                nnz(oldCount:count-1,:) = t.table{i};
+                
                 i = t.next(i);
             end
             subs = nnz(:,1:end-1);
@@ -571,56 +570,6 @@ classdef htensor
             bi = startBucket;
             ri = startRow;
             nzctr = 0;
-
-            if bi == -1
-                fprintf("reached end of table. stop.\n");
-                return
-            end
-
-            %check if first bucket is empty
-            if isempty(t.table{1})
-                %fprintf("Start bucket is empty.\n");
-                bi = t.next(1);
-            end
-
-            % if initial bucket has been iterated all the way through,
-            % increment bucket index and reset list index
-            if ri > size(t.table{bi},1)
-                %fprintf("initial row in bucket is last in chain. going to next bucket.\n");
-                bi = t.next(bi);
-                ri = 1; 
-            end
-
-            %Accumulate nonzero indexes and values until we reach n
-            while bi ~= -1
-                for ri=ri:size(t.table{bi},1)
-                    nnz(nzctr+1,:) = t.table{bi}(ri,:);
-                    nzctr = nzctr+1;
-                    if nzctr == n
-                        %fprintf("got enough nonzeros, return...\n");
-                        %fprintf("bi: %d\n",bi);
-                        %fprintf("ri: %d\n",ri);
-                        ri = ri+1;
-                        return
-                    end
-                end
-
-                ri = 1;
-                bi = t.next(bi);
-            end
-
-            %Remove any remaining rows of 0s if we run out of nnz to get.
-            %fprintf("trimming zeroes...\n");
-            %fprintf("bi: %d\n",bi);
-            %fprintf("ri: %d\n",ri);
-            nnz = nnz(1:nzctr,:);
-        end
-
-        function [nnz,bi,ri] = retrieve2(t, n, startBucket, startRow)
-            nnz = zeros(n,t.nmodes+1);
-            bi = startBucket;
-            ri = startRow;
-            nzctr = 0;
             nnzRowIdx = 1;
 
             if bi == -1
@@ -650,7 +599,7 @@ classdef htensor
                 %nnz
                 %fprintf("\n")
                 if nzctr <= n
-                    fprintf("adding all contents of bucket\n");
+                    %fprintf("adding all contents of bucket\n");
                     topIdx = nnzRowIdx+size(t.table{bi},1)-1; %index of where the last element added should end up
                     nnz(nnzRowIdx:topIdx,:) = t.table{bi};
                     nnzRowIdx = nnzRowIdx + size(t.table{bi},1);

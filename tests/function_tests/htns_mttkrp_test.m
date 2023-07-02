@@ -21,7 +21,7 @@ dimorder = 1:N;
 Uinit = cell(N,1);
 
 %this shold correspond to the number of components in the decomposition
-col_sz = 5;
+col_sz = 52;
 
 for n = 1:N
     Uinit{n} = rand(T.modes(n),col_sz);
