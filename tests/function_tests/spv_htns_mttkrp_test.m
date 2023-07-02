@@ -3,14 +3,17 @@
 addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 %addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 
-%set up Tensor Toolbox sptensor
-X = read_coo('uber_trim.txt');
+file = 'uber.txt';
 
-T = htensor(X.subs,X.vals);
+%set up Tensor Toolbox sptensor
+%X = read_coo(file);
+
+%set up HaCOO tensor
+%T = read_htns(file);
 
 %Set up U
 N = T.nmodes;
-NUMTRIALS = N;
+NUMTRIALS = 1;
 dimorder = 1:N;
 Uinit = cell(N,1);
 
@@ -24,19 +27,30 @@ end
 U = Uinit;
 
 %set up answers array
-htns_ans = cell(NUMTRIALS,1);
-tt_ans = cell(NUMTRIALS,1);
+htns_ans = cell(NUMTRIALS,N);
+tt_ans = cell(NUMTRIALS,N);
 
 fprintf("Calculating HaCOO mttkrp...\n")
 
 for n = 1:NUMTRIALS
-    htns_ans{n} = spv_htns_mttkrp(T,U,n); %<--matricize with respect to dimension n.
+    for m = 1:N
+        tic
+        htns_ans{n,m} = spv_htns_mttkrp(T,U,m); %<--matricize with respect to dimension m.
+        toc
+    end
 end
 
 fprintf("Calculating Tensor Toolbox mttkrp...\n")
 for n = 1:NUMTRIALS
-    tt_ans{n} = mttkrp(X,U,n); %<--matricize with respect to dimension i.
+    for m = 1:N
+        tic
+        tt_ans{n,m} = mttkrp(X,U,m); %<--matricize with respect to dimension m.
+        toc
+    end
 end
+
+htns_ans
+tt_ans
 
 %check if answers match within a specified tolerance
 for i = 1:length(htns_ans)
@@ -59,6 +73,4 @@ for i = 1:length(htns_ans)
     end
 end
 
-
-
-
+%}

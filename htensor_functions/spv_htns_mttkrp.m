@@ -26,7 +26,7 @@ m = zeros(T.modes(n), fmax);
 for f=1:fmax
     % preallocate accumulation arrays
     t = zeros(1,T.hash_curr_size);
-    tind=zeros(1,T.hash_curr_size);
+    tind = zeros(1,T.hash_curr_size);
     ac = 1; %counter for accumulation arrays
     b = 1; %bucket index
 
@@ -36,8 +36,9 @@ for f=1:fmax
         %go through every entry in that bucket
         for j=1:size(T.table{b},1)
 
-            idx = T.table{b}{j};
-            val = T.table{b}{j,2};
+            nnz = T.table{b}(j,:);
+            idx = nnz(1:end-1);
+            val = nnz(end);
 
             t(ac) = val;
             tind(ac) = idx(n);
@@ -57,7 +58,7 @@ for f=1:fmax
         end
 
         %update bucket to next occupied bucket
-        b = t.next(b);
+        b = T.next(b);
     end
     
     % accumulate m(:,f)
