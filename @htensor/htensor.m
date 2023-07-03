@@ -274,11 +274,12 @@ classdef htensor
                 %fprintf("inserting new entry\n")
                 if v ~= 0
                     if isempty(t.table{k})
-                        t.table{k} = {idx v};
+                        t.table{k} = [idx v];
                         %if it's not the only element in the table, we have to check above for occupied buckets
                         t = t.update_next(k);
                     else
                         %if not empty, append to the end
+                        %fprintf("vertcat...\n")
                         t.table{k} = vertcat(t.table{k},[idx v]);
                     end
 
@@ -352,7 +353,10 @@ classdef htensor
         %}
         function [k,i] = search(t, idx)
 
-            s = sum(idx);
+            %concatenate the index
+            s = num2str(idx);
+            s = strrep(s,' ','');
+            s = str2double(s);
             k = t.hash(s);
 
             %b/c of MATLAB indexing...
@@ -368,7 +372,9 @@ classdef htensor
                 %attempt to find item in that bubcket's chain
                 %fprintf('searching within chain\n');
                 for i = 1:size(t.table{k},1)
-                    if t.table{k}(1:end-1) == idx
+                    %t.table{k}
+                    %t.table{k}(i,1:end-1)
+                    if t.table{k}(i,1:end-1) == idx
                         return
                     end
                 end
@@ -445,12 +451,14 @@ classdef htensor
         %       t - the updated tensor
         %
         function t = remove(t,i)
+            
             [k,j] = t.search(i);
 
             if j ~= -1 %<-- we located the index successfully
                 %fprintf("Deleting entry: ");
                 %disp(i);
                 t.table{k}(j,:) = []; %delete the entire row
+                t.init_next(); %reset "next" array. This can be fixed to be like set to no iterate through all entries
             else
                 fprintf("Could not remove nonzero entry.\n");
                 return
@@ -565,12 +573,66 @@ classdef htensor
              bi - bucket index of the last element retrieved
              ri - row index of the last element retrieved
         %}
+
         function [nnz,bi,ri] = retrieve(t, n, startBucket, startRow)
             nnz = zeros(n,t.nmodes+1);
             bi = startBucket;
             ri = startRow;
             nzctr = 0;
-            nnzRowIdx = 1;
+
+            if bi == -1
+                fprintf("reached end of table. stop.\n");
+                return
+            end
+
+            %check if first bucket is empty
+            if isempty(t.table{1})
+                %fprintf("Start bucket is empty.\n");
+                bi = t.next(1);
+            end
+
+            % if initial bucket has been iterated all the way through,
+            % increment bucket index and reset list index
+            if ri > size(t.table{bi},1)
+                %fprintf("initial row in bucket is last in chain. going to next bucket.\n");
+                bi = t.next(bi);
+                ri = 1;
+            end
+
+            %Accumulate nonzero indexes and values until we reach n
+            while bi ~= -1
+                for ri=ri:size(t.table{bi},1)
+                    nnz(nzctr+1,:) = t.table{bi}(ri,:);
+                    nzctr = nzctr+1;
+                    if nzctr == n
+                        %fprintf("got enough nonzeros, return...\n");
+                        %fprintf("bi: %d\n",bi);
+                        %fprintf("ri: %d\n",ri);
+                        ri = ri+1;
+                        return
+                    end
+                end
+
+                ri = 1;
+                bi = t.next(bi);
+            end
+
+            %Remove any remaining rows of 0s if we run out of nnz to get.
+            %fprintf("trimming zeroes...\n");
+            %fprintf("bi: %d\n",bi);
+            %fprintf("ri: %d\n",ri);
+            nnz = nnz(1:nzctr,:);
+        end
+
+        %Trying to eliminate the loop over the individdual bucket. not
+        %working right now.
+        function [nnz,bi,ri] = retrieve2(t, n, startBucket, startRow)
+            nnz = zeros(n,t.nmodes+1);
+            bi = startBucket;
+            ri = startRow;
+            nzctr = 0;
+            bottomIdx = 1;
+            topIdx = 1;
 
             if bi == -1
                 fprintf("reached end of table. stop.\n");
@@ -600,9 +662,9 @@ classdef htensor
                 %fprintf("\n")
                 if nzctr <= n
                     %fprintf("adding all contents of bucket\n");
-                    topIdx = nnzRowIdx+size(t.table{bi},1)-1; %index of where the last element added should end up
-                    nnz(nnzRowIdx:topIdx,:) = t.table{bi};
-                    nnzRowIdx = nnzRowIdx + size(t.table{bi},1);
+                    topIdx = bottomIdx+size(t.table{bi},1)-1; %index of where the last element added should end up
+                    nnz(bottomIdx:topIdx,:) = t.table{bi};
+                    bottomIdx = bottomIdx + size(t.table{bi},1);
                     if nzctr == n %stop condition
                         bi = t.next(bi);
                         return
@@ -615,9 +677,15 @@ classdef htensor
                     %nnz
                     %fprintf("only need %d items from this bucket\n",nzctr-n+1)
                     %t.table{bi}
-                    ri = nzctr-n+1; %update row index
+                    %ri = nzctr-n+1; %update row index
                     %get only the elements we need
-                    nnz(nnzRowIdx-1:ri,:) = t.table{bi}(1:ri,:);
+                    %t.table{bi}(1:ri,:)
+                    %fprintf("bottom index: %d\n",nnzRowIdx)
+                    %fprintf("top index: %d\n",nnzRowIdx+ri-1)
+                    bottomIdx = topIdx+1;
+                    topIdx = nzctr-1;
+                    ri = topIdx-1;
+                    nnz(bottomIdx:bottomIdx+ri-1,:) = t.table{bi}(1:ri,:);
                     return
                 end
                 bi = t.next(bi);
