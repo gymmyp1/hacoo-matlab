@@ -236,16 +236,20 @@ classdef htensor
         % Optionally -
         %       update - If index already exists, update its existing
         %                value by v
+        %       concatIdx - If you have already concatenated the index,
+        %               then you can pass it to save the time required to convert it.
         % Returns:
         %       t - the updated tensor
         function t = set(t,idx,v,varargin)
             % Set parameters from input or by using defaults
             params = inputParser;
             params.addParameter('update',0,@isscalar);
+            params.addParameter('concatIdx',-1,@isscalar);
             params.parse(varargin{:});
 
             % Copy from params object
             update = params.Results.update;
+            concatIdx = params.Results.concatIdx;
 
             % build the modes if we need to
             if t.nmodes == 0
@@ -266,8 +270,13 @@ classdef htensor
                 return
             end
 
-            % find the index
-            [k, i] = t.search(idx);
+            if concatIdx ~= -1
+                %if a concatenated index got passed, search using that
+                [k, i] = t.search(idx,'concatIdx',concatIdx);
+            else
+                % try to find the index
+                [k, i] = t.search(idx);
+            end
 
             % insert accordingly
             if i == -1
@@ -345,19 +354,39 @@ classdef htensor
 		Search for an index entry in hash table.
 		Parameters:
 		    idx - The nonzero index to search for
+        Optional:
+            concatIdx - If you already have the concatenated version of the
+                index, hash using that.
 		Returns:
 			If m is found, it returns the (k, i) tuple where k is
 			  the bucket and i is its location in the chain (the row it's
               located in)
 			If m is not found, return (k, -1).
         %}
-        function [k,i] = search(t, idx)
+        function [k,i] = search(t, idx,varargin)
+            % Set parameters from input or by using defaults
+            params = inputParser;
+            params.addParameter('concatIdx',-1,@isscalar);
+            params.parse(varargin{:});
 
-            %concatenate the index
-            s = num2str(idx);
-            s = strrep(s,' ','');
-            s = str2double(s);
-            k = t.hash(s);
+            % Copy from params object
+            concatIdx = params.Results.concatIdx;
+
+
+            %check if idx is a concatenated index or inividual index
+            %components
+
+            if concatIdx ~= -1
+                %pass the concatenated index to hash function
+                k = t.hash(concatIdx);
+            else
+                %concatenate the index
+                s = num2str(idx);
+                s = strrep(s,' ','');
+                s = str2double(s);
+                k = t.hash(s);
+
+            end 
 
             %b/c of MATLAB indexing...
             if k <= 0

@@ -15,7 +15,7 @@ opt = {'Delimiter',' '};
 fid = fopen(file,'rt');
 hdr = fgetl(fid);
 num = numel(regexp(hdr,' ','split'));
-if strcmp(file,"enron.txt") || strcmp(file,"nell-2.txt") || strcmp(file,"lbnl.txt")
+if strcmp(file,"enron.txt") || strcmp(file,"nell.txt") || strcmp(file,"lbnl.txt")
     fmt = repmat('%d',1,num-1); %to read files with decimal values (enron, nell-2,lbnl)
     fmt = strcat(fmt,'%f');
 else
