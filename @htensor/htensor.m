@@ -16,7 +16,6 @@ classdef htensor
         max_chain_depth
         hash_curr_size %<-- number of nnz in the hash table
         load_factor %<-- percent of the table that can be filled before rehashing
-        next
         nnzLoc %store location of occupied buckets
     end
     methods
@@ -53,7 +52,7 @@ classdef htensor
                         t.modes = [];   %<-- EMPTY class constructor
                         t.nmodes = 0;
                         t = hash_init(t,varargin{1});
-                        t = t.init_next();
+                        %t = t.init_next();
                         t = t.init_nnzLoc();
                         return
                     else
@@ -69,9 +68,10 @@ classdef htensor
                         t.hash_curr_size = m{3};
                         t.max_chain_depth = m{4};
                         t.load_factor = m{5};
-                        t.next = m{6};
+                        %t.next = m{6};
+                        t.nnzLoc = m{6};
                         t = t.set_hashing_params();
-                        t = t.init_next();
+                        %t = t.init_next();
                         t = t.init_nnzLoc();
                     end
 
@@ -103,7 +103,7 @@ classdef htensor
                     t = t.init_table(idx,vals,concatIdx);
 
                     %init the "next occupied bucket" flag
-                    t = t.init_next();
+                    %t = t.init_next();
 
                     t = t.init_nnzLoc();
 
@@ -124,7 +124,7 @@ classdef htensor
                     t = t.init_table(idx,vals,concatIdx);
 
                     %init the "next occupied bucket" flag
-                    t = t.init_next();
+                    %t = t.init_next();
                     t = t.init_nnzLoc();
 
                 otherwise
@@ -132,7 +132,7 @@ classdef htensor
                     t.nmodes = 0;
                     NBUCKETS = 128;
                     t = hash_init(t,NBUCKETS);
-                    t = t.init_next();
+                    %t = t.init_next();
                     t = t.init_nnzLoc();
             end
         end
@@ -143,7 +143,7 @@ classdef htensor
             t.max_chain_depth = 0;
             % create column vector w/ appropriate number of bucket slots +
             % 1 as a dummy bucket
-            t.table = cell(t.nbuckets+1,1);
+            t.table = cell(t.nbuckets,1);
 
             t = t.set_hashing_params();
         end
@@ -175,7 +175,6 @@ classdef htensor
             keys = zeros(length(idx),1);
 
             for i = 1:length(idx)
-               
                 hash = concatIdx(i);
                 hash = hash + bitshift(hash,t.sx); %bit shifting
                 hash = bitxor(hash, bitshift(hash,-t.sy));
@@ -185,6 +184,29 @@ classdef htensor
 
             keys(keys == 0) = 1;
 
+            %for i=1:length(idx)
+                %fprintf("index ")
+                %idx(i,:)
+                %fprintf(" maps to key: %d\n",keys(i))
+            %end
+
+            uniqueKeys = unique(keys);
+            
+            for i=1:length(uniqueKeys)
+                idxLoc = find(keys==uniqueKeys(i));
+                currIdx = idx(idxLoc,:); %get a chunk of indexes that belong to that unique key
+                currVals = vals(idxLoc);
+                nnzChunk = [currIdx,currVals]; %horizontally concatenate indexes with vals
+                t.table{uniqueKeys(i)} = nnzChunk;
+
+                depth = size(currVals,1);
+                    if depth > t.max_chain_depth
+                        t.max_chain_depth = depth;
+                    end
+                t.hash_curr_size = t.hash_curr_size + depth;
+            end
+
+            %{
             for i=1:length(keys)
                 %check if the slot is occupied already
                 if isempty(t.table{keys(i)})
@@ -200,6 +222,7 @@ classdef htensor
                 
                 t.hash_curr_size = t.hash_curr_size + 1;
             end
+            %}
         end
     
         function t = init_nnzLoc(t)
