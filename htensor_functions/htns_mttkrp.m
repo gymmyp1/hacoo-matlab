@@ -1,10 +1,7 @@
-%function [V,walltime,cpu_time] = htns_coo_mttkrp(X,U,n,nzchunk,rchunk,ver)
-
-function V = htns_mttkrp(X,U,n,nzchunk,rchunk)
-
+function V = htns_mttkrp(X,U,n,nzchunk,rchunk,ver)
 %MTTKRP Matricized tensor times Khatri-Rao product for sparse tensor.
-%   This has been adapted to use sub and val matrices extracted from
-%   a HaCOO htensor using the "retrieve" function. Everything else is
+%   This has been adapted to use indexes and values extracted from
+%   a HaCOO htensor X. Everything else is
 %   unchanged from the Toolbox version.
 %
 %   NOTICE: This internals of this code changed in Version 3.3 of Tensor
@@ -22,10 +19,17 @@ function V = htns_mttkrp(X,U,n,nzchunk,rchunk)
 %   array, it ignores the Nth factor matrix. The lambda vector is absorbed
 %   into one of the factor matrices.
 %
+%   V = MTTKRP(X,U,N,0) reverts to the OLD version of MTTKRP prior to
+%   Tensor Toolbox Version 3.3, which repeatedly calls TTV.
+%
 %   V = MTTKRP(X,U,N,NZCHUNK,RCHUNK) specifies the "chunk" sizes for the
 %   nonzeros and factor matrix columns, respectively. These default to
 %   NZCHUNK=1e4 and RCHUNK=10 if not specified. If NZCHUNK=NNZ(X) and
 %   RCHUNCK=SIZE(U{1},2), then it's just one big chunk.
+%
+%   V = MTTKRP(X,U,N,NZCHUNK,RCHUNK,2) swaps the loop order so that the
+%   R-loop is INSIDE the NZ-loop rather than the reverse, which is the
+%   default.
 %
 %   Examples
 %   S = sptensor([3 3 3; 1 3 3; 1 2 1], 4, [3, 4, 3]); %<-Declare sptensor
@@ -45,7 +49,7 @@ if isa(U,'ktensor')
         U = redistribute(U,2);
     else
         U = redistribute(U,1);
-    end
+    end    
     % Extract the factor matrices
     U = U.u;
 end
@@ -70,91 +74,104 @@ end
 if ~exist('rchunk','var')
     rchunk = 10;
 end
+if ~exist('ver','var')
+    if nzchunk <= 0
+        ver = 0;
+    else
+        ver = 1;
+    end
+end
 
-%fprintf("using chunked approach...\n");
+%just retrieve all subs and vals at once
+[subs,vals] = X.all_subsVals();
 
-flag = 0; %is this the first iteration? all other iterations we don't have to retrieve from the table any more.
-nz = X.hash_curr_size;
-d = X.nmodes;
-nn = X.modes(n);
+if ver == 0 % OLD WAY
+    
+    V = zeros(size(X,n),R);
 
+    for r = 1:R
+        % Set up cell array with appropriate vectors for ttv multiplication
+        Z = cell(N,1);
+        for i = [1:n-1,n+1:N]
+            Z{i} = U{i}(:,r);
+        end
+        % Perform ttv multiplication
+        V(:,r) = double(ttv(X, Z, -n));
+    end
+    
+elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH
+    
+    nz = nnz(X);
+    d = ndims(X);
+    nn = size(X,n);
 
-V = zeros(nn,R);
-rctr = 0;
+    V = zeros(nn,R);    
+    rctr = 0;
+    while (rctr < R)
+        
+        % Process r range from rctr1 to rctr (columns of factor matrices)
+        rctr1 = rctr + 1;
+        rctr = min(R, rctr + rchunk);
+        rlen = rctr - rctr1 + 1;
+        
+        nzctr = 0;
+        while (nzctr < nz)
+            
+            % Process nonzero range from nzctr1 to nzctr 
+            nzctr1 = nzctr+1;
+            nzctr = min(nz,nzctr1+nzchunk);   
+            
+            % ----
+            Vexp = repmat(vals(nzctr1:nzctr),1,rlen);
+            for k = [1:n-1, n+1:d]
+                Ak = U{k};
+                Akexp = Ak(subs(nzctr1:nzctr,k),rctr1:rctr);
+                Vexp = Vexp .* Akexp;
+            end
+            for j = rctr1:rctr
+                vj = accumarray(subs(nzctr1:nzctr,n), Vexp(:,j-rctr1+1), [nn 1]);
+                V(:,j) = V(:,j) + vj;
+            end
+            % ----
+        end
+    end
 
-%since this processes rchunks at a time, we need space to save ceiling(R/rchunk) chunks of nonzeros
-tempSubs = cell(1,ceil(R/rchunk));
-tempVals = cell(1,ceil(R/rchunk));
+elseif ver == 2 % 'CHUNKED' SWAPPING R & NZ CHUNKS
+    
+    nz = nnz(X);
+    d = ndims(X);
+    nn = size(X,n);
 
-while (rctr < R)
-
-    % Process r range from rctr1 to rctr (columns of factor matrices)
-    rctr1 = rctr + 1;
-    rctr = min(R, rctr + rchunk);
-    rlen = rctr - rctr1 + 1;
-
+    V = zeros(nn,R);    
     nzctr = 0;
-    itrNum = 1; %counter for revisiting nonzeros for a new rchunk
-    startBucket = 1;
-    startRow = 1;
     while (nzctr < nz)
         
-
         % Process nonzero range from nzctr1 to nzctr
         nzctr1 = nzctr+1;
         nzctr = min(nz,nzctr1+nzchunk);
+        rctr = 0;
+        Xvals = vals(nzctr1:nzctr);
+        while (rctr < R)
+            
+            % Process r range from rctr1 to rctr (columns of factor matrices)
+            rctr1 = rctr + 1;
+            rctr = min(R, rctr + rchunk);
+            rlen = rctr - rctr1 + 1;
+            
+            % ----
+            Vexp = repmat(Xvals,1,rlen);
+            for k = [1:n-1, n+1:d]
+                Ak = U{k};
+                Akexp = Ak(subs(nzctr1:nzctr,k),rctr1:rctr);
+                Vexp = Vexp .* Akexp;
+            end
+            for j = rctr1:rctr
+                vj = accumarray(subs(nzctr1:nzctr,n), Vexp(:,j-rctr1+1), [nn 1]);
+                V(:,j) = V(:,j) + vj;
+            end
+            % ----
 
-        % ----
-
-       
-        if flag
-            %we don't have to retrieve from the table again
-            %fprintf("this is not the first iteration\n")
-
-            %use our saved subs/vals instead of retrieving from the table
-            subs = tempSubs{itrNum};
-            vals = tempVals{itrNum};
-
-        else
-            %fprintf("This is the first iteration\n")
-             %this is happening every rchunk, which slows it down. temporarily save results for other iterations
-            [nnz,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,startBucket,startRow);
-            subs = nnz(:,1:end-1);
-            vals = nnz(:,end);
-
-            startBucket = stopBucket;
-            startRow = stopRow;
-
-            %save result for later
-            tempSubs{itrNum} = subs;
-            tempVals{itrNum} = vals;
         end
-        
-        %{
-        [nnz,stopBucket,stopRow] = X.retrieve(nzctr-nzctr1+1,startBucket,startRow); %this is happening every rchunk, which slows it down. maybe temporarily sabe thi
-        subs = nnz(:,1:end-1);
-        vals = nnz(:,end);
-
-        startBucket = stopBucket;
-        startRow = stopRow;
-        %}
-
-        Vexp = repmat(vals,1,rlen);
-
-        for k = [1:n-1, n+1:d]
-            Ak = U{k};
-            Akexp = Ak(subs(:,k),rctr1:rctr);
-            Vexp = Vexp .* Akexp;
-        end
-        for j = rctr1:rctr
-            vj = accumarray(subs(:,n), Vexp(:,j-rctr1+1), [nn 1]);
-            V(:,j) = V(:,j) + vj;
-        end
-
-        itrNum = itrNum + 1;
-        % ----
     end
-    flag = 1; %flip flag
-end
-
+    
 end

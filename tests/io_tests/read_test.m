@@ -7,5 +7,5 @@ tic
 
 t = read_htns('coo_ex.txt')
 
-%t.display_htns();
+t.display_htns();
 toc

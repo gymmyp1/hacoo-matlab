@@ -4,10 +4,7 @@
 addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 tic
-%t = read_htns('uber.txt');
+t = read_htns('coo_ex.txt');
 
-%t.all_subs
-%t.all_vals
-tic
-[subs,vals] = t.all_subsVals;
+[subs,vals] = t.all_subsVals()
 toc

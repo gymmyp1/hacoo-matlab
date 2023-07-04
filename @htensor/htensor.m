@@ -16,7 +16,8 @@ classdef htensor
         max_chain_depth
         hash_curr_size %<-- number of nnz in the hash table
         load_factor %<-- percent of the table that can be filled before rehashing
-        next %<-- to be able to jump to next occupied bucket
+        next
+        nnzLoc %store location of occupied buckets
     end
     methods
 
@@ -38,27 +39,41 @@ classdef htensor
             %       function.
 
         function t = htensor(varargin) %<-- Class constructor
-            
+
             t.hash_curr_size = 0;
             t.load_factor = 0.6;
 
             switch nargin
 
-                %Load from .mat file
+                %Load from .mat file or 'nbuckets' is specified
                 case 1
-                    loaded = matfile(varargin{1});
-                    t.table = loaded.T; %load table
-                    m = loaded.M; %load table info
+                    %if we get passed a specific number of buckets
+                    if isscalar(varargin{1})
+                        fprintf("creating tensor w specified num of buckets\n")
+                        t.modes = [];   %<-- EMPTY class constructor
+                        t.nmodes = 0;
+                        t = hash_init(t,varargin{1});
+                        t = t.init_next();
+                        t = t.init_nnzLoc();
+                        return
+                    else
+                        fprintf("loading from .mat file\n")
+                        %load from .mat file
+                        loaded = matfile(varargin{1});
+                        t.table = loaded.T; %load table
+                        m = loaded.M; %load table info
 
-                    t.nbuckets = m{1};
-                    t.modes = m{2};
-                    t.nmodes = length(t.modes);
-                    t.hash_curr_size = m{3};
-                    t.max_chain_depth = m{4};
-                    t.load_factor = m{5};
-                    t.next = m{6};
-                    t = t.set_hashing_params();
-                    t = t.init_next();
+                        t.nbuckets = m{1};
+                        t.modes = m{2};
+                        t.nmodes = length(t.modes);
+                        t.hash_curr_size = m{3};
+                        t.max_chain_depth = m{4};
+                        t.load_factor = m{5};
+                        t.next = m{6};
+                        t = t.set_hashing_params();
+                        t = t.init_next();
+                        t = t.init_nnzLoc();
+                    end
 
                 case 2 %Subs and vals specified as arg1 and ag2
                     %this will take a long time since it has to convert
@@ -90,8 +105,10 @@ classdef htensor
                     %init the "next occupied bucket" flag
                     t = t.init_next();
 
-                case 3
+                    t = t.init_nnzLoc();
 
+                case 3
+                    %fprintf("case 3\n")
                     idx = varargin{1};
                     vals = varargin{2};
                     concatIdx = varargin{3};
@@ -108,6 +125,7 @@ classdef htensor
 
                     %init the "next occupied bucket" flag
                     t = t.init_next();
+                    t = t.init_nnzLoc();
 
                 otherwise
                     t.modes = [];   %<-- EMPTY class constructor
@@ -115,6 +133,7 @@ classdef htensor
                     NBUCKETS = 128;
                     t = hash_init(t,NBUCKETS);
                     t = t.init_next();
+                    t = t.init_nnzLoc();
             end
         end
 
@@ -183,6 +202,11 @@ classdef htensor
             end
         end
     
+        function t = init_nnzLoc(t)
+            %get the locations of nonempty cells
+            t.nnzLoc = find(~cellfun(@isempty,t.table));
+        end
+
         %{
           Populate "next" array that indicates the next occupied bucket
           from any occupied bucket.
@@ -238,6 +262,9 @@ classdef htensor
         %                value by v
         %       concatIdx - If you have already concatenated the index,
         %               then you can pass it to save the time required to convert it.
+        %       updateNext - Toggle adjusting updating the "next" array
+        %               every time you insert an index. Ideal if you are
+        %               inserting a lot of new elements
         % Returns:
         %       t - the updated tensor
         function t = set(t,idx,v,varargin)
@@ -245,11 +272,15 @@ classdef htensor
             params = inputParser;
             params.addParameter('update',0,@isscalar);
             params.addParameter('concatIdx',-1,@isscalar);
+            %params.addParameter('updateNext',1,@isscalar);
+            params.addParameter('updateNnzLoc',1,@isscalar);
             params.parse(varargin{:});
 
             % Copy from params object
             update = params.Results.update;
             concatIdx = params.Results.concatIdx;
+            %updateNext = params.Results.updateNext;
+            updateNnzLoc = params.Results.updateNnzLoc;
 
             % build the modes if we need to
             if t.nmodes == 0
@@ -262,12 +293,6 @@ classdef htensor
                 if t.modes(m) < idx(m)
                     t.modes(m) = idx(m);
                 end
-            end
-
-            %make sure index is not invalid
-            if ~all(idx)
-                fprintf("Unable to insert index, which is all zeros.\n")
-                return
             end
 
             if concatIdx ~= -1
@@ -284,8 +309,17 @@ classdef htensor
                 if v ~= 0
                     if isempty(t.table{k})
                         t.table{k} = [idx v];
-                        %if it's not the only element in the table, we have to check above for occupied buckets
-                        t = t.update_next(k);
+                        %{
+                        if updateNext
+                            %if it's not the only element in the table, we have to check above for occupied buckets
+                            t.next = t.update_next(k);
+                        end
+                        %}
+                        if updateNnzLoc
+                            %if it's not the only element in the table,
+                            %re-initialize occupied bucket array
+                            t.nnzLoc = t.initNnzLoc(k);
+                        end
                     else
                         %if not empty, append to the end
                         %fprintf("vertcat...\n")
@@ -323,6 +357,7 @@ classdef htensor
            Returns:
                 t - the updated tensor
         %}
+        %{
         function t = update_next(t,k)
             %fprintf("current key: %d\n",k)
             if t.hash_curr_size ~= 0
@@ -349,6 +384,7 @@ classdef htensor
                 t.next(1) = k;
             end
         end
+        %}
 
         %{
 		Search for an index entry in hash table.
@@ -372,7 +408,6 @@ classdef htensor
             % Copy from params object
             concatIdx = params.Results.concatIdx;
 
-
             %check if idx is a concatenated index or inividual index
             %components
 
@@ -385,10 +420,9 @@ classdef htensor
                 s = strrep(s,' ','');
                 s = str2double(s);
                 k = t.hash(s);
-
             end 
 
-            %b/c of MATLAB indexing...
+            %ensure there are no keys equal to 0
             if k <= 0
                 k = 1;
             end
@@ -465,13 +499,12 @@ classdef htensor
             [subs,vals] = t.all_subsVals();
 
             %Create new tensor, constructor will fill new values into table
-            new = htensor(subs,vals);
-            new = new.init_next();
+            new = htensor(subs,vals); %!! this takes a while, since we don't have a fast way to concatenate indexes yet.
+            new = new.init_nnzLoc();
 
             %fprintf("Done rehashing,\n");
         end
 
-        % THIS NEEDS MODIFYING to update the "next" array
         % Remove an existing tensor entry.
         % Parameters:
         %       t - A HaCOO htensor
@@ -487,12 +520,13 @@ classdef htensor
                 %fprintf("Deleting entry: ");
                 %disp(i);
                 t.table{k}(j,:) = []; %delete the entire row
-                t.init_next(); %reset "next" array. This can be fixed to be like set to no iterate through all entries
+                t = t.init_nnzLoc(); %reset occupied bucket locations
             else
                 fprintf("Could not remove nonzero entry.\n");
                 return
             end
         end
+        
 
         %{
             Retrieve all indexes and vals from HaCOO sparse tensor
@@ -502,6 +536,16 @@ classdef htensor
             subs - array of all indexes in HaCOO tensor t
             vals - array of all values in HaCOO tensor t
         %}
+
+        function [subs,vals] = all_subsVals(t)
+            nnz = t.table(t.nnzLoc);
+            A = vertcat(nnz{1:end,:});
+            subs = A(:,1:end-1);
+            vals = A(:,end);
+        end
+
+        %{ 
+        Old version.
         function [subs,vals] = all_subsVals(t)
             nnz = zeros(t.hash_curr_size,t.nmodes+1); %<-- preallocate matrix
             oldCount = 1;
@@ -519,56 +563,35 @@ classdef htensor
             subs = nnz(:,1:end-1);
             vals = nnz(:,end);
         end
+        %}
 
         %{
-            Retrieve all indexes from HaCOO sparse tensor
+        Retrieve all indexes from HaCOO sparse tensor.
+
         Parameters:
             t - HaCOO htensor
         Returns:
             subs - array of all indexes in HaCOO tensor t
         %}
         function subs = all_subs(t)
-            nnz = zeros(t.hash_curr_size,t.nmodes+1); %<-- preallocate matrix
-            counter = 1;
-            i = 1;
-            if isempty(t.table{i}) 
-                i = t.next(i);
-            end
-
-            while i ~= -1
-                for j=1:size(t.table{i},1)
-                    nnz(counter,:) = t.table{i}(j,:);
-                    counter = counter+1;
-                end
-                i = t.next(i);
-            end
-            subs = nnz(:,1:end-1);
+            nnz = t.table(t.nnzLoc);
+            A = vertcat(nnz{1:end,:});
+            subs = A(:,1:end-1);
         end
 
 
         %{
-            Retrieve all values from HaCOO sparse tensor
+        Retrieve all values from HaCOO sparse tensor.
+
         Parameters:
             t - HaCOO htensor
         Returns:
             vals - array of all values in HaCOO tensor t
         %}
         function vals = all_vals(t)
-            nnz = zeros(t.hash_curr_size,t.nmodes+1); %<-- preallocate matrix
-            counter = 1;
-            i = 1;
-            if isempty(t.table{i}) 
-                i = t.next(i);
-            end
-
-            while i ~= -1
-                for j=1:size(t.table{i},1)
-                    nnz(counter,:) = t.table{i}(j,:);
-                    counter = counter+1;
-                end
-                i = t.next(i);
-            end
-            vals = nnz(:,end);
+            nnz = t.table(t.nnzLoc);
+            A = vertcat(nnz{1:end,:});
+            vals = A(:,end);
         end
 
         %{
@@ -580,12 +603,16 @@ classdef htensor
             Returns:
                 b - index of next occupied bucket
         %}
+        %{
         function b = next_bucket(t,i)
             b = t.next(i);
             %fprintf("%d is %d's next bucket.\n",b, i)
         end
+        %}
 
         %{
+        !!!Since replacing the "next array with nnzLoc, this doesn't work.
+
         Retrieve n nonzeroes from the table, beginning at start,
              which is a tuple containing [bucketIdx, rowIdx]. If an
              element is present at start, then it is included in the
@@ -653,76 +680,26 @@ classdef htensor
             nnz = nnz(1:nzctr,:);
         end
 
-        %Trying to eliminate the loop over the individdual bucket. not
-        %working right now.
-        function [nnz,bi,ri] = retrieve2(t, n, startBucket, startRow)
-            nnz = zeros(n,t.nmodes+1);
-            bi = startBucket;
-            ri = startRow;
-            nzctr = 0;
-            bottomIdx = 1;
-            topIdx = 1;
-
-            if bi == -1
-                fprintf("reached end of table. stop.\n");
-                return
-            end
-
-            %check if starting bucket is empty
-            if isempty(t.table{bi})
-                %fprintf("Start bucket is empty.\n");
-                bi = t.next(bi);
-            end
-
-            % if initial bucket has been iterated all the way through,
-            % increment bucket index and reset list index
-            if ri > size(t.table{bi},1)
-                %fprintf("initial row in bucket is last in chain. going to next bucket.\n");
-                bi = t.next(bi);
-                ri = 1; 
-            end
-
-            %Accumulate nonzero indexes and values until we reach n
-            while bi ~= -1
-                
-                nzctr = nzctr + size(t.table{bi},1);
-                %fprintf("current nnz: ")
-                %nnz
-                %fprintf("\n")
-                if nzctr <= n
-                    %fprintf("adding all contents of bucket\n");
-                    topIdx = bottomIdx+size(t.table{bi},1)-1; %index of where the last element added should end up
-                    nnz(bottomIdx:topIdx,:) = t.table{bi};
-                    bottomIdx = bottomIdx + size(t.table{bi},1);
-                    if nzctr == n %stop condition
-                        bi = t.next(bi);
-                        return
-                    end
-                else %nzctr > n
-                    %fprintf("bucket has more elements than needed\n");
-                    %we only need to retrieve nzctr-n+1 elements
-                    %fprintf("current nonzeros accumulated: %d\n ",nnzRowIdx-1)
-                    %fprintf("nnzRowIdx: %d\n ",nnzRowIdx)
-                    %nnz
-                    %fprintf("only need %d items from this bucket\n",nzctr-n+1)
-                    %t.table{bi}
-                    %ri = nzctr-n+1; %update row index
-                    %get only the elements we need
-                    %t.table{bi}(1:ri,:)
-                    %fprintf("bottom index: %d\n",nnzRowIdx)
-                    %fprintf("top index: %d\n",nnzRowIdx+ri-1)
-                    bottomIdx = topIdx+1;
-                    topIdx = nzctr-1;
-                    ri = topIdx-1;
-                    nnz(bottomIdx:bottomIdx+ri-1,:) = t.table{bi}(1:ri,:);
-                    return
+        % Print all nonzero elements.
+        function display_htns(t)
+            print_limit = 100;
+            
+            if (t.hash_curr_size > print_limit)
+                prompt = "The HaCOO tensor you are about to print contains more than 100 elements. Do you want to print? (Y/N): ";
+                p = input(prompt,"s");
+                if p  == "Y" || p == "y"
+                    nnz = t.table(t.nnzLoc);
+                    A = vertcat(nnz{1:end,:});
+                    fprintf("Printing %d tensor elements.\n",t.hash_curr_size);
+                    disp(A);
                 end
-                bi = t.next(bi);
             end
+
+           
         end
 
-        % Function to print all nonzero elements stored in the tensor.
-        function display_htns(t)
+        %{
+        function old_display_htns(t)
             %{
             print_limit = 100;
             
@@ -748,6 +725,7 @@ classdef htensor
                 i = t.next_bucket(i);
             end
         end
+        %}
 
         % Clear all entries and start with a new hash table.
         function t = clear(t, nbuckets)
