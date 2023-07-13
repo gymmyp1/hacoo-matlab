@@ -1,4 +1,4 @@
-function [P,Uinit,output] = htns_cp_als(X,R,varargin)
+function [walltime,cpu_time,P,Uinit,output] = htns_cp_als2(X,R,varargin)
 % This function has been adapted to work with a HaCOO, or htensor.
 %
 %CP_ALS Compute a CP decomposition of any type of tensor.
@@ -45,10 +45,13 @@ function [P,Uinit,output] = htns_cp_als(X,R,varargin)
 %
 %Tensor Toolbox for MATLAB: <a href="https://www.tensortoolbox.org">www.tensortoolbox.org</a>
 
-
+walltime = 0;
+cpu_time = 0;
+tStart = cputime;
+tic;
 
 %% Extract number of dimensions and norm of X.
-N = htns_ndims(X);
+N = X.nmodes;
 normX = htns_norm(X); %changed to htensor's norm function
 
 %% Set algorithm parameters from input or by using defaults
@@ -77,7 +80,7 @@ if iscell(init)
         error('OPTS.init does not have %d cells',N);
     end
     for n = dimorder(2:end)
-        if ~isequal(htns_size(Uinit{n}),[htns_size(X,n) R])
+        if ~isequal(htns_size(Uinit{n}),[hs(X,n) R])
             error('OPTS.init{%d} is the wrong size',n);
         end
     end
@@ -199,7 +202,12 @@ end
     end   
 %end %<- end if (isa(X,'sptensor') || isa(X,'tensor')) && (exist('cpals_core','file') == 3)
 
+walltime = walltime + toc;
+tEnd = cputime - tStart;
+cpu_time = cpu_time + tEnd;
 
+
+%{
 %% Clean up final result
 % Arrange the final tensor so that the columns are normalized.
 P = arrange(P);
@@ -211,7 +219,8 @@ end
 if printitn>0
     % this is temporary until innerprod
     % with a kruskal and htensor is implemented
-    X = sptensor(X.all_subs(),X.all_vals()');
+    [subs,vals] = X.all_subsVals();
+    X = sptensor(subs,vals); 
     if normX == 0
         fit = norm(P)^2 - 2 * innerprod(X,P);
     else
@@ -224,3 +233,4 @@ end
 output = struct;
 output.params = params.Results;
 output.iters = iter;
+%}

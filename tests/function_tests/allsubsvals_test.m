@@ -1,11 +1,10 @@
-%Read test for testing htensor(HaCOO) class
+%Driver code for testing all_subs() and all_vals()
 
 %addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
 addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
 
 tic
+t = read_htns('coo_ex.txt');
 
-t = read_htns('y.txt')
-
-%t.display_htns();
+[subs,vals] = t.all_subsVals()
 toc

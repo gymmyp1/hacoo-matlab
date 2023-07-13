@@ -1,6 +1,5 @@
-function [P,Uinit,output] = htns_coo_cp_als(X,R,varargin)
-% This creates an equivalent COO sptensor at the beginning to use their
-% functions.
+function [P,Uinit,output] = htns_cp_als(X,R,varargin)
+% This function has been adapted to work with a HaCOO, or htensor.
 %
 %CP_ALS Compute a CP decomposition of any type of tensor.
 %
@@ -46,17 +45,11 @@ function [P,Uinit,output] = htns_coo_cp_als(X,R,varargin)
 %
 %Tensor Toolbox for MATLAB: <a href="https://www.tensortoolbox.org">www.tensortoolbox.org</a>
 
-%% Copy X over to T
-T = X;
 
-% Retrieve all indexes and vals from the HaCOO tensor
-tsubs = T.all_subs();
-tvals = T.all_vals();
-%% Temporary: create a duplicate sptensor until innerprod with HaCOO and ktensor is implemented.
-%X = sptensor(tsubs,tvals);
-%% Extract number of dimensions and norm of T.
+X
+%% Extract number of dimensions and norm of X.
 N = X.nmodes;
-normX = htns_norm(X);
+normX = htns_norm(X); %changed to htensor's norm function
 
 %% Set algorithm parameters from input or by using defaults
 params = inputParser;
@@ -84,7 +77,7 @@ if iscell(init)
         error('OPTS.init does not have %d cells',N);
     end
     for n = dimorder(2:end)
-        if ~isequal(size(Uinit{n}),[X.modes(n) R])
+        if ~isequal(htns_size(Uinit{n}),[hs(X,n) R])
             error('OPTS.init{%d} is the wrong size',n);
         end
     end
@@ -92,12 +85,14 @@ else
     % Observe that we don't need to calculate an initial guess for the
     % first index in dimorder because that will be solved for in the first
     % inner iteration.
+    %changed this to calc the first guess anyway...
     if strcmp(init,'random')
         Uinit = cell(N,1);
-        for n = dimorder(2:end)
-            Uinit{n} = rand(X.modes(n),R);
+        %for n = dimorder(2:end)
+        for n = dimorder(1:end)
+            Uinit{n} = rand(htns_size(X,n),R);
         end
-    elseif strcmp(init,'nvecs') || strcmp(init,'eigs') 
+    elseif strcmp(init,'nvecs') || strcmp(init,'eigs') %this has been left alone...
         Uinit = cell(N,1);
         for n = dimorder(2:end)
             Uinit{n} = nvecs(X,n,R);
@@ -112,7 +107,7 @@ U = Uinit;
 fit = 0;
 
 % Store the last MTTKRP result to accelerate fitness computation.
-U_mttkrp = zeros(X.modes(dimorder(end)), R);
+U_mttkrp = zeros(htns_size(X, dimorder(end)), R);
 
 if printitn>0
   fprintf('\nCP_ALS:\n');
@@ -120,20 +115,23 @@ end
 
 %% Main Loop: Iterate until convergence
 
-if (isa(X,'sptensor') || isa(X,'tensor')) && (exist('cpals_core','file') == 3)
+%if (isa(X,'sptensor') || isa(X,'tensor')) && (exist('cpals_core','file') == 3)
  
     %fprintf('Using C++ code\n');
-    [lambda,U] = cpals_core(X, Uinit, fitchangetol, maxiters, dimorder);
-    P = ktensor(lambda,U);
+    % not sure where this file is, so commenting out for now...
+    %[lambda,U] = cpals_core(X, Uinit, fitchangetol, maxiters, dimorder);
+    %P = ktensor(lambda,U);
     
-else
-
+%else
+    
+    
     UtU = zeros(R,R,N);
     for n = 1:N
         if ~isempty(U{n})
             UtU(:,:,n) = U{n}'*U{n};
         end
     end
+    
     
     for iter = 1:maxiters
         
@@ -143,7 +141,8 @@ else
         for n = dimorder(1:end)
             
             % Calculate Unew = X_(n) * khatrirao(all U except n, 'r').
-            Unew = X.htns_coo_mttkrp(U,n); %changed to HaCOO mttkrp
+            Unew = htns_mttkrp(X,U,n); %changed to HaCOO specific mttkrp
+
             % Save the last MTTKRP result for fitness check.
             if n == dimorder(end)
               U_mttkrp = Unew;
@@ -172,10 +171,8 @@ else
         P = ktensor(lambda,U);
 
         % This is equivalent to innerprod(X,P).
-        %iprod = sum(sum(P.U{dimorder(end)} .* U_mttkrp) .* lambda');
-        %iprod = innerprod(X,P);
-        iprod = htns_ktns_innerprod(P,X); %HaCOO and ktersor innerprod
-        
+        iprod = sum(sum(P.U{dimorder(end)} .* U_mttkrp) .* lambda');
+        %iprod = htns_innerprod(X,P); %changed to HaCOO-specific innerprod function.
         if normX == 0
             fit = norm(P)^2 - 2 * iprod;
         else
@@ -200,11 +197,10 @@ else
             break;
         end        
     end   
-end
+%end %<- end if (isa(X,'sptensor') || isa(X,'tensor')) && (exist('cpals_core','file') == 3)
 
 
 %% Clean up final result
-
 % Arrange the final tensor so that the columns are normalized.
 P = arrange(P);
 % Fix the signs
@@ -213,10 +209,14 @@ if params.Results.fixsigns
 end
 
 if printitn>0
+    % this is temporary until innerprod
+    % with a kruskal and htensor is implemented
+    [subs,vals] = X.all_subsVals();
+    X = sptensor(subs,vals); 
     if normX == 0
-        fit = norm(P)^2 - 2 * htns_ktns_innerprod(X,P);
+        fit = norm(P)^2 - 2 * innerprod(X,P);
     else
-        normresidual = sqrt( normX^2 + norm(P)^2 - 2 * htns_ktns_innerprod(P,X) );
+        normresidual = sqrt( normX^2 + norm(P)^2 - 2 * innerprod(X,P) );
         fit = 1 - (normresidual / normX); %fraction explained by model
     end
   fprintf(' Final f = %e \n', fit);

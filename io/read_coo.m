@@ -1,4 +1,4 @@
-% Read a COO text file into a COO sparse tensor
+% Read a COO text file into a Tensor Toolbox sparse tensor
 % 
 % Input:
 %       file - text file string

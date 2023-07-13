@@ -22,18 +22,25 @@ nz = t.hash_curr_size;
 nzchunk = 3;
 acc_nnz = 0;
 
-[subs,vals,stopBucket,stopRow] = t.retrieve(9,startBucket,startRow);
+[nnz,stopBucket,stopRow] = t.retrieve(3,7,startRow);
 
-subs
-vals
+nnz
+
+startBucket = stopBucket
+startRow = stopRow
+
+[nnz,stopBucket,stopRow] = t.retrieve(3,startBucket,startRow);
+
+nnz
 
 %{
 while (acc_nnz < nz)
-    [subs,vals,stopBucket,stopRow] = t.retrieve(nzchunk,startBucket,startRow);
-    disp(subs)
+    [nnz,stopBucket,stopRow] = t.retrieve(nzchunk,startBucket,startRow);
+    nnz
     startBucket = stopBucket;
     startRow = stopRow;
+    %fprintf("new start bucket: %d\n",startBucket)
+    %fprintf("new start row: %d\n",startRow)
     acc_nnz = acc_nnz+nzchunk;
 end
 %}
-
