@@ -1,6 +1,7 @@
 %{
 Carry out mttkrp using the Sparse Vector method between the tensor 
-and an array of matrices unfolding the tensor along mode n.
+and an array of matrices unfolding the tensor along mode n. This is very
+slow.
 
 Parameters:
     u - A list of matrices, these correspond to the modes

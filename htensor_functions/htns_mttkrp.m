@@ -87,7 +87,7 @@ end
 
 if ver == 0 % OLD WAY
     
-    V = zeros(size(X,n),R);
+    V = zeros(X.modes(n),R);
 
     for r = 1:R
         % Set up cell array with appropriate vectors for ttv multiplication
@@ -101,9 +101,9 @@ if ver == 0 % OLD WAY
     
 elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH
     
-    nz = nnz(X);
+    nz = X.hash_curr_size;
     d = ndims(X);
-    nn = size(X,n);
+    nn = X.modes(n);
 
     V = zeros(nn,R);    
     rctr = 0;
@@ -138,9 +138,9 @@ elseif ver == 1 % NEW DEFAULT 'CHUNKED' APPROACH
 
 elseif ver == 2 % 'CHUNKED' SWAPPING R & NZ CHUNKS
     
-    nz = nnz(X);
+    nz = X.hash_curr_size;
     d = ndims(X);
-    nn = size(X,n);
+    nn = X.modes(n);
 
     V = zeros(nn,R);    
     nzctr = 0;

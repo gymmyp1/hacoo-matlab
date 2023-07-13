@@ -1,4 +1,4 @@
-function [P,Uinit,output] = htns_cp_als2(X,R,varargin)
+function [walltime,cpu_time,P,Uinit,output] = htns_cp_als2(X,R,varargin)
 % This function has been adapted to work with a HaCOO, or htensor.
 %
 %CP_ALS Compute a CP decomposition of any type of tensor.
@@ -45,6 +45,10 @@ function [P,Uinit,output] = htns_cp_als2(X,R,varargin)
 %
 %Tensor Toolbox for MATLAB: <a href="https://www.tensortoolbox.org">www.tensortoolbox.org</a>
 
+walltime = 0;
+cpu_time = 0;
+tStart = cputime;
+tic;
 
 %% Extract number of dimensions and norm of X.
 N = X.nmodes;
@@ -197,6 +201,11 @@ end
         end        
     end   
 %end %<- end if (isa(X,'sptensor') || isa(X,'tensor')) && (exist('cpals_core','file') == 3)
+
+walltime = walltime + toc;
+tEnd = cputime - tStart;
+cpu_time = cpu_time + tEnd;
+
 
 %{
 %% Clean up final result
