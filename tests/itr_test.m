@@ -1,6 +1,3 @@
-%addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
-addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
-
 t = read_htns('coo_ex.txt');
 
 %-----------
