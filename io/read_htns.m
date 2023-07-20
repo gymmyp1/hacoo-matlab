@@ -48,7 +48,7 @@ switch nargin
         % end of the string. Matched stubstring is replaced by empty string ('').
         concatIdx = regexprep(lines,'\s\S*$','');
         concatIdx = strrep(concatIdx,' ','');
-        concatIdx = str2num(concatIdx);
+        concatIdx = str2double(concatIdx);
 
         t = htensor(idx,vals,concatIdx);
 
