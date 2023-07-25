@@ -8,7 +8,7 @@ tic
 %Just change these file names to what you need.
 %-------
 file = "uber.txt";
-concatIdxFile = "uber_concat.txt";
+%concatIdxFile = "uber_concat.txt";
 %--------
 
 fprintf("Saving tensor %s to file...\n", file);

@@ -57,10 +57,13 @@ classdef htensor
                         t.nmodes = 0;
                         t = hash_init(t,varargin{1});
                         t = t.init_nnzLoc();
+                        return
 
                     elseif isstring(varargin{1})
                         %load from .mat file
                         loaded = matfile(varargin{1});
+                        t = loaded.t;
+                        %{
                         t.table = loaded.T; %load table
                         m = loaded.M; %load additional info
 
@@ -73,6 +76,9 @@ classdef htensor
                         t.nnzLoc = m{6};
                         t = t.set_hashing_params();
                         t = t.init_nnzLoc();
+                        %}
+                        return
+
                     end
                 case 2 %Subs and vals specified as arg1 and arg2
                     %this will take a long time since it has to convert
@@ -101,7 +107,7 @@ classdef htensor
                     t = hash_init(t,NBUCKETS);
                     t = t.init_table(idx,vals,concatIdx);
                     t = t.init_nnzLoc();
-
+                    return
 
                 case 3
                     idx = varargin{1};
@@ -119,6 +125,7 @@ classdef htensor
                     t = hash_init(t,NBUCKETS);
                     t = t.init_table(idx,vals,concatIdx);
                     t = t.init_nnzLoc();
+                    return
 
                 otherwise
                     t.modes = [];   %<-- EMPTY class constructor
@@ -126,6 +133,7 @@ classdef htensor
                     NBUCKETS = 512;
                     t = hash_init(t,NBUCKETS);
                     t = t.init_nnzLoc();
+                    return
             end
         end
 
