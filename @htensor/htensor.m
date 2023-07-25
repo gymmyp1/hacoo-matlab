@@ -55,7 +55,7 @@ classdef htensor
                     if isscalar(varargin{1})
                         t.modes = [];
                         t.nmodes = 0;
-                        t = hash_init(t,varargin{1});
+                        t = t.hash_init(varargin{1});
                         t = t.init_nnzLoc();
                         return
 
@@ -104,7 +104,7 @@ classdef htensor
                     NBUCKETS = max(reqSize,512);
 
                     % Initialize all hash table related things
-                    t = hash_init(t,NBUCKETS);
+                    t = t.hash_init(NBUCKETS);
                     t = t.init_table(idx,vals,concatIdx);
                     t = t.init_nnzLoc();
                     return
