@@ -63,20 +63,6 @@ classdef htensor
                         %load from .mat file
                         loaded = matfile(varargin{1});
                         t = loaded.t;
-                        %{
-                        t.table = loaded.T; %load table
-                        m = loaded.M; %load additional info
-
-                        t.nbuckets = m{1};
-                        t.modes = m{2};
-                        t.nmodes = length(t.modes);
-                        t.hash_curr_size = m{3};
-                        t.max_chain_depth = m{4};
-                        t.load_factor = m{5};
-                        t.nnzLoc = m{6};
-                        t = t.set_hashing_params();
-                        t = t.init_nnzLoc();
-                        %}
                         return
 
                     end
@@ -118,8 +104,11 @@ classdef htensor
                     t.nmodes = length(t.modes);
 
                     nnz = size(idx,1);
-                    reqSize= power(2,ceil(log2(nnz/t.load_factor)));
-                    NBUCKETS = max(reqSize,512);
+                    reqSize = nnz / t.load_factor;
+                    e = ceil(log2(reqSize));
+                    NBUCKETS = max(512, pow2(e));
+                    %reqSize= power(2,ceil(log2(nnz/t.load_factor)));
+                    %NBUCKETS = max(reqSize,512);
 
                     % Initialize all hash table related things
                     t = hash_init(t,NBUCKETS);
