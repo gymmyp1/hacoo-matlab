@@ -1,4 +1,5 @@
 function [walltime,cpu_time,P,Uinit,output] = htns_cp_als2(X,R,varargin)
+% Intended only for timing purposes. Use htns_cp_als() instead.
 % This function has been adapted to work with a HaCOO, or htensor.
 %
 %CP_ALS Compute a CP decomposition of any type of tensor.

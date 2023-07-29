@@ -1,12 +1,7 @@
 function res = htns_extract(t,subs)
-%EXTRACT Extract value for a sptensor. 
+%EXTRACT Extract values corresponding to list of subs
+% for a HaCOO htensor
 %
-%   EXTRACT(X,SUBS) returns a list of values.
-%
-%   See also SPTENSOR/SUBSREF.
-%
-%Tensor Toolbox for MATLAB: <a href="https://www.tensortoolbox.org">www.tensortoolbox.org</a>
-
 %convert subs array to a table for faster operation
 tsubs = array2table(subs);
 
