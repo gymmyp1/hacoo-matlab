@@ -26,27 +26,12 @@ function t = htensor(varargin)
 t.hash_curr_size = 0;
 t.load_factor = 0.6;
 
-%specifying this ahead of time... hash init repeats some of this :(
-t.table = [];
-t.nbuckets = [];
-t.modes = [];
-t.nmodes = [];
-t.bits = [];
-t.sx = [];
-t.sy = [];
-t.sz = [];
-t.mask = [];
-t.max_chain_depth = [];
-t.hash_curr_size = [];
-t.nnzLoc = [];
-
 %EMPTY constructor
 if (nargin == 0)
-    t.modes = [];   %<-- EMPTY class constructor
-    t.nmodes = 0;
+    t.size = [];   %<-- EMPTY class constructor
     NBUCKETS = 512;
     t = hash_init(t,NBUCKETS);
-    t = init_nnzLoc(t);
+    t.nnzLoc = find(~cellfun(@isempty,t.table));
     t = class(t,'htensor');
     return
 
@@ -57,17 +42,16 @@ if (nargin == 1)
     %source = varargin{1};
 
     if isscalar(varargin{1})
-        t.modes = [];
-        t.nmodes = 0;
+        t.size = [];
         t = hash_init(t,varargin{1});
-        t = init_nnzLoc(t);
+        t.nnzLoc = find(~cellfun(@isempty,t.table));
         t = class(t,'htensor');
         return
     elseif isstring(varargin{1})
         %load from .mat file
         loaded = matfile(varargin{1});
-        t.table = loaded.t; %load table
-        %t = class(t,'htensor');
+        t = loaded.t; %load table
+        t = class(t,'htensor');
         return
     end
 end
@@ -89,10 +73,7 @@ if (nargin == 2) %Subs and vals specified as arg1 and arg2
 
     concatIdx = arrayfun(@str2double,X);
 
-    t.modes = max(idx); %<-- if input is an array
-    t.size = t.modes; %new
-    t.nmodes = length(t.modes);
-
+    t.size = max(idx);
     nnz = size(idx,1);
     reqSize= power(2,ceil(log2(nnz/t.load_factor)));
     NBUCKETS = max(reqSize,512);
@@ -100,7 +81,7 @@ if (nargin == 2) %Subs and vals specified as arg1 and arg2
     % Initialize all hash table related things
     t = hash_init(t,NBUCKETS);
     t = init_table(t,idx,vals,concatIdx);
-    t = init_nnzLoc(t);
+    t.nnzLoc = find(~cellfun(@isempty,t.table));
     t = class(t,'htensor');
     return
 end
@@ -109,19 +90,79 @@ if (nargin == 3)
     vals = varargin{2};
     concatIdx = varargin{3};
 
-    t.modes = max(idx);
-    t.nmodes = length(t.modes);
-
+    t.size = max(idx);
     nnz = size(idx,1);
     reqSize= power(2,ceil(log2(nnz/t.load_factor)));
     NBUCKETS = max(reqSize,512);
-    %t = class(t,'htensor');
+
     % Initialize all hash table related things
     t = hash_init(t,NBUCKETS);
     t = init_table(t,idx,vals,concatIdx);
-    t = init_nnzLoc(t);
+    t.nnzLoc = find(~cellfun(@isempty,t.table));
     t = class(t,'htensor');
     return
 end
 
-end %<--end function
+%Nested init functions
+    % Initialize all hash table related things
+    function t = hash_init(t,n)
+        t.nbuckets = n;
+        t.max_chain_depth = 0;
+        % create column vector w/ appropriate number of bucket slots
+        t.table = cell(t.nbuckets,1);
+        t = set_hashing_params(t);
+    end
+
+
+    % Set hashing parameters
+    function t = set_hashing_params(t)
+        t.bits = ceil(log2(t.nbuckets));
+        t.sx = ceil(t.bits/8)-1;
+        t.sy = 4 * t.sx-1;
+        if t.sy < 1
+            t.sy = 1;
+        end
+        t.sz = ceil(t.bits/2);
+        t.mask = t.nbuckets-1;
+    end
+
+    %{
+    Initialize a list of subscripts and values in the sparse tensor hash table.
+    Parameters:
+	    idx - Array of nonzero subscripts
+        vals - Array of nonzero tensor values
+        concatIdx - Array of nonzero subscripts that have been concatenated.
+    Returns:
+	    A hacoo data type with a populated hash table.
+    %}
+    function t = init_table(t,idx,vals,concatIdx)
+
+        keys = zeros(length(idx),1);
+
+        for j = 1:length(idx)
+            hash = concatIdx(j);
+            hash = hash + bitshift(hash,t.sx);
+            hash = bitxor(hash, bitshift(hash,-t.sy));
+            hash = hash + bitshift(hash,t.sz);
+            keys(j) = mod(hash,t.nbuckets);
+        end
+
+        keys(keys == 0) = 1;
+
+        for j=1:length(keys)
+            %check if the slot is occupied already
+            if isempty(t.table{keys(j)})
+                %if not occupied already, just insert
+                t.table{keys(j)} = [idx(j,:) vals(j)];
+            else
+                t.table{keys(j)} = vertcat(t.table{keys(j)},[idx(j,:) vals(j)]);
+            end
+            depth = size(t.table{keys(j)},1);
+            if depth > t.max_chain_depth
+                t.max_chain_depth = depth;
+            end
+            t.hash_curr_size = t.hash_curr_size + 1;
+        end
+    end
+
+end
