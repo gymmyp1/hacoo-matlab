@@ -16,7 +16,6 @@ classdef htensor
         max_chain_depth
         hash_curr_size %number of nnz in the hash table
         load_factor %<percent of the table that can be filled before rehashing
-        nnzLoc %store indexes of occupied buckets
     end
     methods
 
@@ -55,24 +54,15 @@ classdef htensor
                     if isscalar(varargin{1})
                         t.modes = [];
                         t.nmodes = 0;
-                        t = hash_init(t,varargin{1});
-                        t = t.init_nnzLoc();
+                        t = t.hash_init(varargin{1});
+                        return
 
                     elseif isstring(varargin{1})
                         %load from .mat file
                         loaded = matfile(varargin{1});
-                        t.table = loaded.T; %load table
-                        m = loaded.M; %load additional info
+                        t = loaded.t;
+                        return
 
-                        t.nbuckets = m{1};
-                        t.modes = m{2};
-                        t.nmodes = length(t.modes);
-                        t.hash_curr_size = m{3};
-                        t.max_chain_depth = m{4};
-                        t.load_factor = m{5};
-                        t.nnzLoc = m{6};
-                        t = t.set_hashing_params();
-                        t = t.init_nnzLoc();
                     end
                 case 2 %Subs and vals specified as arg1 and arg2
                     %this will take a long time since it has to convert
@@ -98,10 +88,9 @@ classdef htensor
                     NBUCKETS = max(reqSize,512);
 
                     % Initialize all hash table related things
-                    t = hash_init(t,NBUCKETS);
+                    t = t.hash_init(NBUCKETS);
                     t = t.init_table(idx,vals,concatIdx);
-                    t = t.init_nnzLoc();
-
+                    return
 
                 case 3
                     idx = varargin{1};
@@ -112,20 +101,23 @@ classdef htensor
                     t.nmodes = length(t.modes);
 
                     nnz = size(idx,1);
-                    reqSize= power(2,ceil(log2(nnz/t.load_factor)));
-                    NBUCKETS = max(reqSize,512);
+                    reqSize = nnz / t.load_factor;
+                    e = ceil(log2(reqSize));
+                    NBUCKETS = max(512, pow2(e));
+                    %reqSize= power(2,ceil(log2(nnz/t.load_factor)));
+                    %NBUCKETS = max(reqSize,512);
 
                     % Initialize all hash table related things
                     t = hash_init(t,NBUCKETS);
                     t = t.init_table(idx,vals,concatIdx);
-                    t = t.init_nnzLoc();
+                    return
 
                 otherwise
                     t.modes = [];   %<-- EMPTY class constructor
                     t.nmodes = 0;
                     NBUCKETS = 512;
                     t = hash_init(t,NBUCKETS);
-                    t = t.init_nnzLoc();
+                    return
             end
         end
 
@@ -135,7 +127,6 @@ classdef htensor
             t.max_chain_depth = 0;
             % create column vector w/ appropriate number of bucket slots
             t.table = cell(t.nbuckets,1);
-
             t = t.set_hashing_params();
         end
 
@@ -166,17 +157,11 @@ classdef htensor
             keys = zeros(length(idx),1);
 
             for i = 1:length(idx)
-                %fprintf('idx: ')
-                %idx(i,:)
                 hash = concatIdx(i);
                 hash = hash + bitshift(hash,t.sx);
-                %fprintf("after left shift: %d\n",hash)
                 hash = bitxor(hash, bitshift(hash,-t.sy));
-                %fprintf("after right shift: %d\n",hash)
                 hash = hash + bitshift(hash,t.sz);
-                %fprintf("after left shift: %d\n",hash)
                 keys(i) = mod(hash,t.nbuckets);
-                %fprintf("k: %d\n",keys(i))
             end
 
             keys(keys == 0) = 1;
@@ -196,12 +181,6 @@ classdef htensor
                 t.hash_curr_size = t.hash_curr_size + 1;
             end
         end
-
-        function t = init_nnzLoc(t)
-            %get the locations of nonempty cells
-            t.nnzLoc = find(~cellfun(@isempty,t.table));
-        end
-
 
         %{
         Function to insert a nonzero entry in the hash table.
@@ -255,10 +234,6 @@ classdef htensor
                 if v ~= 0
                     if isempty(t.table{k})
                         t.table{k} = [idx v];
-
-                        %add new occupied bucket index to the end of array
-                        t.nnzLoc(end+1) = k;
-
                     else
                         %if not empty, append to the end
                         t.table{k} = vertcat(t.table{k},[idx v]);
@@ -393,8 +368,7 @@ classdef htensor
             [subs,vals] = t.all_subsVals();
 
             %Create new tensor, constructor will fill new values into table
-            new = htensor(subs,vals); %!! this takes a while, since we don't have a fast way to concatenate indexes yet.
-            new = new.init_nnzLoc();
+            new = htensor(subs,vals); %!! this takes a while don't have a fast way to concatenate indexes yet.
         end
 
         % Remove an existing tensor entry.
@@ -411,12 +385,6 @@ classdef htensor
             if j ~= -1 %<-- we located the index successfully
                 t.table{k}(j,:) = []; %delete the entire row
                 t.hash_curr_size = t.hash_curr_size-1;
-
-                %if that was the only entry in that bucket, remove that key
-                %from the occupied bucket list
-                if size(t.table{k},1) == 0
-                    t.nnzLoc = t.nnzLoc(t.nnzLoc~=k);
-                end
             else
                 fprintf("Could not remove nonzero entry.\n");
                 return
@@ -434,7 +402,7 @@ classdef htensor
         %}
 
         function [subs,vals] = all_subsVals(t)
-            nnz = t.table(t.nnzLoc);
+            nnz = t.table(nnzLoc(t));
             A = vertcat(nnz{1:end,:});
             subs = A(:,1:end-1);
             vals = A(:,end);
@@ -449,7 +417,7 @@ classdef htensor
             subs - array of all indexes in HaCOO tensor t
         %}
         function subs = all_subs(t)
-            nnz = t.table(t.nnzLoc);
+            nnz = t.table(nnzLoc(t));
             A = vertcat(nnz{1:end,:});
             subs = A(:,1:end-1);
         end
@@ -464,7 +432,7 @@ classdef htensor
             vals - array of all values in HaCOO tensor t
         %}
         function vals = all_vals(t)
-            nnz = t.table(t.nnzLoc);
+            nnz = t.table(nnzLoc(t));
             A = vertcat(nnz{1:end,:});
             vals = A(:,end);
         end
@@ -477,7 +445,7 @@ classdef htensor
                 prompt = "The HaCOO tensor you are about to print contains more than 100 elements. Do you want to print? (Y/N): ";
                 p = input(prompt,"s");
                 if p  == "Y" || p == "y"
-                    nnz = t.table(t.nnzLoc);
+                    nnz = t.table(nnzLoc(t));
                     A = vertcat(nnz{1:end,:});
                     fprintf("Printing %d tensor elements.\n",t.hash_curr_size);
                     disp(A);

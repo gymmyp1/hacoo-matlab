@@ -49,7 +49,7 @@ switch nargin
         concatIdx = regexprep(lines,'\s\S*$','');
         concatIdx = strrep(concatIdx,' ','');
         concatIdx = str2double(concatIdx);
-
+        
         t = htensor(idx,vals,concatIdx);
 
     case 2
