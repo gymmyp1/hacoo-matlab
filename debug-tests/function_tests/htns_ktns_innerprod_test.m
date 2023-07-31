@@ -1,8 +1,5 @@
 %Test correctness of htns_ktns_innerprod function.
 
-%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
-addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
-
 %set up answers array
 NUMTRIALS = 10;
 htns_ans = cell(NUMTRIALS,1);

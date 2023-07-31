@@ -1,8 +1,5 @@
 %File to verify correctness of HaCOO MTTKRP function.
 
-%addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
-addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
-
 %file = 'uber_trim_hacoo.mat';
 %T = load_htns(file);
 

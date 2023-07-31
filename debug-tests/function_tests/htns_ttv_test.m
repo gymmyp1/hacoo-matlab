@@ -1,8 +1,5 @@
 %Testing htns_ttv (HaCOO tensor times vector) function.
 
-%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
-addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
-
 %Create random sptensor
 S = sptensor(rand(3,4,2));
 T = htensor(S.subs,S.vals);

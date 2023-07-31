@@ -1,8 +1,5 @@
 %File to check correctness of HaCOO MTTKRP function.
 
-addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
-%addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
-
 file = 'uber.txt';
 
 %set up Tensor Toolbox sptensor

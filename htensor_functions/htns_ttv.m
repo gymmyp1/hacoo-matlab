@@ -43,8 +43,8 @@ if ~iscell(v)
 end
 
 % Get sorted dims and index for multiplicands
-[dims,vidx] = tt_dimscheck(dims,a.nmodes,numel(v)); 
-remdims = setdiff(1:a.nmodes,dims);
+[dims,vidx] = tt_dimscheck(dims,length(a.modes),numel(v)); 
+remdims = setdiff(1:length(a.modes),dims);
 
 % Check that each multiplicand is the right size.
 for i = 1:numel(dims)

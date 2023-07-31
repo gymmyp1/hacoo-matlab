@@ -1,4 +1,4 @@
-%11/4: This needs to be updated to reflect updated table structure.
+%incomplete. please do not use
 
 
 function res = htns_getslice(t, slice)

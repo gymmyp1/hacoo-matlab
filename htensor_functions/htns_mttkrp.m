@@ -41,7 +41,7 @@ function V = htns_mttkrp(X,U,n,nzchunk,rchunk,ver)
 
 % In the sparse case, we do not want to form the Khatri-Rao product.
 
-N = X.nmodes;
+N = length(X.modes);
 
 if isa(U,'ktensor')
     % Absorb lambda into one of the factors, but not the one that's skipped
