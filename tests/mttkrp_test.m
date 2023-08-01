@@ -1,4 +1,4 @@
-%File to time HaCOO vs Tensor Toolbox's MTTKRP function.
+%Time HaCOO and Tensor Toolbox's MTTKRP function.
 
 file = "uber.txt";
 
@@ -11,8 +11,7 @@ fprintf("Initializing HaCOO htensor...\n");
 T = read_htns(file);
 
 %Set up U
-N = T.nmodes;
-NUMTRIALS = 10;
+N = length(T.modes);
 
 dimorder = 1:N;
 Uinit = cell(N,1);
@@ -29,63 +28,33 @@ U = Uinit;
 %store times for each mode
 htns_elapsed = zeros(1,N);
 tt_elapsed = zeros(1,N);
-htns_cpu = zeros(1,N);
-tt_cpu = zeros(1,N);
 
-fprintf("Calculating HaCOO mttkrp...\n")
+fprintf("HaCOO MTTKRP: \n");
 
-for i = 1:NUMTRIALS
-    fprintf("Trial %d\n",i);
-    for n=1:N
-        fprintf("MTTKRP over mode %d\n",n);
-        f = @() htns_mttkrp(T,U,n); %<--matricize with respect to dimension n.
-        tStart = cputime;
-        t = timeit(f);
-        htns_elapsed(n) = htns_elapsed(n) + t;
-        tEnd = cputime - tStart;
-        htns_cpu(n) = htns_cpu(n) + tEnd;
-    end
+for n=1:N
+    fprintf("MTTKRP over mode %d\n",n);
+    f = @() htns_mttkrp(T,U,n); %<--matricize with respect to dimension n.
+    tStart = cputime;
+    t = timeit(f);
+    htns_elapsed(n) = t;
 end
 
-fprintf("Calculating Tensor Toolbox mttkrp...\n")
-for i = 1:NUMTRIALS
-    fprintf("Trial %d\n",i);
-    for n=1:N
-        fprintf("MTTKRP over mode %d\n",n);
-        f = @() mttkrp(X,U,n); %<--matricize with respect to dimension n.
-        tStart = cputime;
-        t = timeit(f);
-        tt_elapsed(n) = tt_elapsed(n) + t;
-        tEnd = cputime - tStart;
-        tt_cpu(n) = tt_cpu(n) + tEnd;
-    end
+fprintf("Tensor Toolbox MTTKRP: \n");
+
+for n=1:N
+    fprintf("MTTKRP over mode %d\n",n);
+    f = @() mttkrp(X,U,n); %<--matricize with respect to dimension n.
+    tStart = cputime;
+    t = timeit(f);
+    tt_elapsed(n) = t;
 end
 
-htns_elapsed= htns_elapsed/NUMTRIALS;
-tt_elapsed= tt_elapsed/NUMTRIALS;
-htns_cpu = htns_cpu/NUMTRIALS;
-tt_cpu = tt_cpu/NUMTRIALS;
-
-outFile = fopen(outFileName,'w');
-
-fprintf("Averages calculated over %d trials.\n",NUMTRIALS);
-
-fprintf("Average elapsed time using HaCOO: \n");
+fprintf("Elapsed time using HaCOO: \n");
 for i=1:N
     fprintf("Over mode %d: %f\n",i,htns_elapsed(i));
 end
 
-fprintf("Average elapsed time using Tensor Toolbox: \n");
+fprintf("Elapsed time using Tensor Toolbox: \n");
 for i=1:N
     fprintf("Over mode %d: %f\n",i,tt_elapsed(i));
-end
-
-fprintf("Average CPU time using HaCOO: \n");
-for i=1:N
-    fprintf("Over mode %d: %f\n",i,htns_cpu(i));
-end
-
-fprintf("Average CPU time using Tensor Toolbox: \n");
-for i=1:N
-    fprintf("Over mode %d: %f\n",i,tt_cpu(i));
 end

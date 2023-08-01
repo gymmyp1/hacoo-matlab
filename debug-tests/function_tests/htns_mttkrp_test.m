@@ -12,13 +12,13 @@ X = read_coo(file);
 T = read_htns(file);
 
 %Set up U
-N = T.nmodes;
+N = length(T.modes);
 NUMTRIALS = 1;
 dimorder = 1:N;
 Uinit = cell(N,1);
 
 %this shold correspond to the number of components in the decomposition
-col_sz = 52;
+col_sz = 50;
 
 for n = 1:N
     Uinit{n} = rand(T.modes(n),col_sz);
