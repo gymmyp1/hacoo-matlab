@@ -228,7 +228,6 @@ classdef htensor
 
             % insert accordingly
             if i == -1
-                %fprintf("inserting new entry\n")
                 if v ~= 0
                     if isempty(t.table{k})
                         t.table{k} = [idx v];
@@ -249,7 +248,7 @@ classdef htensor
                  %update the value instead of overwirting the existing one
                 t.table{k}(i,end) = t.table{k}(i,end) + v;
             else
-                fprintf("Cannot set entry.\n");
+                fprintf("Cannot set entry, either duplicate index or value is 0.\n");
                 return
             end
 
