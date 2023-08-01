@@ -11,9 +11,8 @@ function [subs,vals] = htns_find(t)
 %
 %   See also SPTENSOR, FIND.
 % 
-%Tensor Toolbox for MATLAB: <a href="https://www.tensortoolbox.org">www.tensortoolbox.org</a>
+%Tensor Toolbox for MATLAB: <a
+%href="https://www.tensortoolbox.org">www.tensortoolbox.org</a>[
 
 
-
-subs = t.get_subs;
-vals = t.get_vals;
+[subs,vals] = t.all_subsVals;

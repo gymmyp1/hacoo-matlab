@@ -45,10 +45,8 @@ function [P,Uinit,output] = htns_cp_als(X,R,varargin)
 %
 %Tensor Toolbox for MATLAB: <a href="https://www.tensortoolbox.org">www.tensortoolbox.org</a>
 
-
-X
 %% Extract number of dimensions and norm of X.
-N = X.nmodes;
+N = length(X.modes);
 normX = htns_norm(X); %changed to htensor's norm function
 
 %% Set algorithm parameters from input or by using defaults
@@ -171,8 +169,8 @@ end
         P = ktensor(lambda,U);
 
         % This is equivalent to innerprod(X,P).
-        iprod = sum(sum(P.U{dimorder(end)} .* U_mttkrp) .* lambda');
-        %iprod = htns_innerprod(X,P); %changed to HaCOO-specific innerprod function.
+        %iprod = sum(sum(P.U{dimorder(end)} .* U_mttkrp) .* lambda');
+        iprod = htns_innerprod(X,P); %changed to HaCOO-specific innerprod function.
         if normX == 0
             fit = norm(P)^2 - 2 * iprod;
         else
@@ -209,8 +207,7 @@ if params.Results.fixsigns
 end
 
 if printitn>0
-    % this is temporary until innerprod
-    % with a kruskal and htensor is implemented
+    % this is temporary until innerprod between a kruskal and htensor is implemented
     [subs,vals] = X.all_subsVals();
     X = sptensor(subs,vals); 
     if normX == 0

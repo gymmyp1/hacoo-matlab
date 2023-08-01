@@ -1,28 +1,18 @@
 %Save a .txt COO tensor a HaCOO .mat file.
 
-%addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
-addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
+function save_htns(varargin)
 
-tic
+files = varargin{1};
 
-%Just change these file names to what you need.
-%-------
-file = "uber.txt";
-%concatIdxFile = "uber_concat.txt";
-%--------
+for i=1:length(files)
+    fprintf("Saving tensor %s to file...\n", file(i));
 
-fprintf("Saving tensor %s to file...\n", file);
+    t = read_htns(file(i));
 
-%if you only have COO file.
-%t = read_htns(file);
+    newStr = erase(file,".txt");
+    matfile = strcat(newStr,'_hacoo.mat');
 
-%If you have indexes already concatenated...
-t = read_htns(file,concatIdxFile);
-
-newStr = erase(file,".txt");
-matfile = strcat(newStr,'_hacoo.mat');
-
-write_htns(t,matfile);
-
-toc
+    write_htns(t,matfile);
+end
+end
 

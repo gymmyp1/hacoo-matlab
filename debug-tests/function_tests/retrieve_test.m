@@ -1,8 +1,5 @@
 %code for testing the retrieve() function.
 
-addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
-%addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
-
 file = 'y.txt';
 t = read_htns(file);
 

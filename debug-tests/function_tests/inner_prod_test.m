@@ -1,8 +1,5 @@
 %Test correctness of htns_innerprod function.
 
-%addpath /Users/meilicharles/Documents/MATLAB/hacoo-matlab/
-addpath  C:\Users\MeiLi\OneDrive\Documents\MATLAB\hacoo-matlab
-
 %set up answers array
 htns_ans = {};
 tt_ans = {};

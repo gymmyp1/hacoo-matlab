@@ -52,7 +52,7 @@ tStart = cputime;
 tic;
 
 %% Extract number of dimensions and norm of X.
-N = X.nmodes;
+N = length(X.modes);
 normX = htns_norm(X); %changed to htensor's norm function
 
 %% Set algorithm parameters from input or by using defaults
