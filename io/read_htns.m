@@ -40,7 +40,7 @@ vals = tdata(:,end);
 
 switch nargin
     case 1
-
+        %fprintf("concatenating indexs...\n");
         lines = readlines(file,"EmptyLineRule","skip");
 
         %get only the indexes
@@ -49,7 +49,7 @@ switch nargin
         concatIdx = regexprep(lines,'\s\S*$','');
         concatIdx = strrep(concatIdx,' ','');
         concatIdx = str2double(concatIdx);
-        
+        %fprintf("finished concatenating indexes\n")
         t = htensor(idx,vals,concatIdx);
 
     case 2

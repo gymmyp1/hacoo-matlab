@@ -175,6 +175,9 @@ classdef htensor
                     t.max_chain_depth = depth;
                 end
                 t.hash_curr_size = t.hash_curr_size + 1;
+                %if mod(i,100) == 0
+                    %fprintf("i: %d\n",i);
+                %end
             end
         end
 
@@ -405,7 +408,8 @@ classdef htensor
         %}
 
         function [subs,vals] = all_subsVals(t)
-            A = vertcat(t.nnzLoc{1:end,:});
+            nnz = t.table(t.nnzLoc);
+            A = vertcat(nnz{1:end,:});
             subs = A(:,1:end-1);
             vals = A(:,end);
         end
@@ -419,7 +423,8 @@ classdef htensor
             subs - array of all indexes in HaCOO tensor t
         %}
         function subs = all_subs(t)
-            A = vertcat(t.nnzLoc{1:end,:});
+            nnz = t.table(t.nnzLoc);
+            A = vertcat(nnz{1:end,:});
             subs = A(:,1:end-1);
         end
 
@@ -433,7 +438,8 @@ classdef htensor
             vals - array of all values in HaCOO tensor t
         %}
         function vals = all_vals(t)
-            A = vertcat(t.nnzLoc{1:end,:});
+            nnz = t.table(t.nnzLoc);
+            A = vertcat(nnz{1:end,:});
             vals = A(:,end);
         end
 

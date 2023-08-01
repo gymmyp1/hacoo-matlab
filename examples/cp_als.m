@@ -2,13 +2,15 @@
     Compute CP-ALS.
 %}
 
-file = "uber.txt";
-
+tic
 %create the HaCOO tensor
-X = read_htns(file)
+T = read_htns("uber.txt")
+toc
 
 %specify number of components
 R = 50;
 
+tic
 %Computes an estimate of the best rank-R CP model of a tensor X (requires Tensor Toolbox)
-V = htns_cp_als(X,R);
+V = htns_cp_als(T,R);
+toc
