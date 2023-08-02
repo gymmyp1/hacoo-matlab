@@ -63,20 +63,11 @@ classdef htensor
                         return
                     end
                 case 2 %Subs and vals specified as arg1 and arg2
-                    %this will take a long time since it has to convert
-                    %indexes to string and back. case 3 is faster
 
                     idx = varargin{1};
                     vals = varargin{2};
 
-                    T = arrayfun(@string,idx);
-                    X = strcat(T(:,1),'',T(:,2)); %To start the new array
-
-                    for i=3:size(T,2)
-                        X= strcat(X(:,:),'',T(:,i));
-                    end
-
-                    concatIdx = arrayfun(@str2double,X);
+                    concatIdx = concatenateIndexes(idx);
 
                     t.modes = max(idx); %<-- if input is an array
 
@@ -87,6 +78,7 @@ classdef htensor
                     % Initialize all hash table related things
                     t = t.hash_init(NBUCKETS);
                     t = t.init_table(idx,vals,concatIdx);
+
                     %save array of locations of nonempty buckets
                     t.nnzLoc = find(~cellfun(@isempty,t.table));
                     return
@@ -121,6 +113,7 @@ classdef htensor
         function t = hash_init(t,n)
             t.nbuckets = n;
             t.max_chain_depth = 0;
+
             % create column vector w/ appropriate number of bucket slots
             t.table = cell(t.nbuckets,1);
             t = t.set_hashing_params();
@@ -175,7 +168,7 @@ classdef htensor
                     t.max_chain_depth = depth;
                 end
                 t.hash_curr_size = t.hash_curr_size + 1;
-                %if mod(i,100) == 0
+                %if mod(i,1000) == 0 %to get updates on progress
                     %fprintf("i: %d\n",i);
                 %end
             end
@@ -213,6 +206,7 @@ classdef htensor
 
             % update any mode maxes as needed
             for m = 1:length(t.modes)
+                fprintf("updating modes\n")
                 if t.modes(m) < idx(m)
                     t.modes(m) = idx(m);
                 end
@@ -256,6 +250,7 @@ classdef htensor
             if((t.hash_curr_size/t.nbuckets) > t.load_factor)
                 t = t.rehash();
             end
+
         end
 
         %{
@@ -287,9 +282,12 @@ classdef htensor
                 k = t.hash(concatIdx);
             else
                 %concatenate the index
-                s = num2str(idx);
-                s = strrep(s,' ','');
-                s = str2double(s);
+                %set up multipliers
+                a = flip(0:size(idx,2)-1,2);
+                b = repmat(10,1,size(idx,2));
+                m = b.^a;
+
+                s = sum(idx.*m);
                 k = t.hash(s);
             end
 
