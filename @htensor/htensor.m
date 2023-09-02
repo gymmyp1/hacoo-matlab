@@ -67,6 +67,7 @@ classdef htensor
                     idx = varargin{1};
                     vals = varargin{2};
 
+                    % concatentateIndexes() is found in htensor_functions directory
                     concatIdx = concatenateIndexes(idx);
 
                     t.modes = max(idx); %<-- if input is an array
