@@ -14,7 +14,7 @@ Function to time how long it takes to build a COO tensor line by line
         walltime - elapsed time to insert all elements into tensor
         cpu_time - cpu time to insert all elements into tensor
 %}
-function [tns, walltime, cpu_time] = build_frostt(file,nnz, format,idx,vals,concatIdx)
+function [walltime, cpu_time] = build_frostt(file,nnz, format,idx,vals,concatIdx)
 
 walltime = 0;
 cpu_time = 0;

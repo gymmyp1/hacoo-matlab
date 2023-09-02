@@ -3,10 +3,9 @@
 
 
 %list of FROSTT tensors in the "frostt_tensors" directory
-%files = ["uber.txt" "chicago.txt" "nips.txt" "lbnl.txt" "nell-2.txt" "enron.txt"];
-files = ["shuf_uber.txt"];
+files = ["uber.txt" "chicago.txt" "nips.txt" "lbnl.txt" "nell-2.txt" "enron.txt"];
 R = 50;
-numTrials = 10;
+numTrials = 1;
 
 for f=1:length(files)
 

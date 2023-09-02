@@ -22,7 +22,7 @@ come already sorted).
 
 Script: produce_mttkrp_res
 Description: Reproduce results for Figure 14, reports average time over N 
-trials (10 by default) to calculate MTTKRP over all modes for both COO 
-Tensor Toolbox sparse tensors and HaCOO htensor sparse tensors.
+trials (10 by default) to calculate MTTKRP over all modes with 50 components
+for both COO Tensor Toolbox sparse tensors and HaCOO htensor sparse tensors.
 
 This uses regular, unaltered FROSTT tensors.

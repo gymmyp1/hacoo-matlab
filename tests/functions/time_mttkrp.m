@@ -22,7 +22,7 @@ X = read_coo(file);
 T = read_htns(file);
 
 %Set up U
-N = T.nmodes;
+N = length(T.modes);
 
 Uinit = cell(N,1);
 

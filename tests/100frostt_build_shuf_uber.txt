@@ -1,0 +1,6 @@
+Reading first 100 nonzeros.
+Averages calculated over 10 trials.
+Average elapsed time using HaCOO: 0.043382
+Average CPU time using HaCOO: 0.057000
+Average elapsed time using Tensor Toolbox: 0.066923
+Average CPU time using Tensor Toolbox: 0.104000
